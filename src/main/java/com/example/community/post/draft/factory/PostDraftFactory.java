@@ -2,7 +2,6 @@ package com.example.community.post.draft.factory;
 
 import com.example.community.post.draft.dto.PostDraftRequestDTO;
 import com.example.community.post.draft.entity.PostDraft;
-import com.example.community.post.dto.PostRequestDTO;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
