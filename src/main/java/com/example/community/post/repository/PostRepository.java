@@ -1,29 +1,26 @@
 package com.example.community.post.repository;
 
 import com.example.community.post.entity.Post;
+import com.example.community.post.entity.PostStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
 
 @Repository
-public class PostRepository {
-    private final Set<Post> posts = new HashSet<>();
-    public void save(Post post) {
-        posts.add(post);
-    }
-    public void delete(Post post) {
-        posts.remove(post);
-    }
-    public List<Post> getAllPosts(){
-        return posts.stream().sorted(Comparator.comparing(Post::getPostId).reversed()).toList();
-    }
+public interface PostRepository extends JpaRepository<Post,Long> {
+    @Query("""
+        select p 
+        from Post p
+        join fetch p.author
+        where p.status <> :status
+        order by p.createdAt desc
+    """)
+    List<Post> findByStatusNot(@Param("status") PostStatus status);
 
-    public Optional<Post> getPostByPostId(Long postId){
-        return posts.stream()
-                .filter(post -> post.getPostId().equals(postId))
-                .findFirst();
-    }
-    public Long nextPostId(){
-        return posts.stream().mapToLong(Post::getPostId).max().orElse(0L) +1;
-    }
+    @EntityGraph(attributePaths = {"author", "detail"})
+    Optional<Post> findByPostId(Long postId);
 }

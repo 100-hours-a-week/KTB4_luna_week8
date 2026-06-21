@@ -18,6 +18,7 @@ import com.example.community.post.repository.PostRepository;
 import com.example.community.user.entity.User;
 import com.example.community.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Optional;
@@ -42,56 +43,61 @@ public class PostDraftService {
     }
 
     // ----------------------------------- 임시작성글 조회 -----------------------------------
+    @Transactional(readOnly = true)
     public Optional<PostDraftResponseDTO> getCurrentDraft(String authorizationHeader){
         long userId = authValidator.getLoginUserId(authorizationHeader);
-        return postDraftRepository.findCurrentByUserId(userId).map(this::toResponseDTO);
+        return postDraftRepository.findByAuthorUserId(userId).map(this::toResponseDTO);
     }
 
     // ----------------------------------- 임시작성글 포스팅 -----------------------------------
+    @Transactional
     public PostResponseDTO publishDraft(String authorizationHeader, PostDraftRequestDTO requestDTO){
         long userId = authValidator.getLoginUserId(authorizationHeader);
-        PostDraft postDraft = postDraftRepository.findCurrentByUserId(userId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(userId, postDraft.getUserId());
-        User author = userRepository.findUserById(userId).orElseThrow(NotRegisteredException::new);
+        PostDraft postDraft = postDraftRepository.findByAuthorUserId(userId).orElseThrow(ContentNotFoundException::new);
+        authValidator.validateOwner(userId, postDraft.getAuthor().getUserId());
+        User author = userRepository.findById(userId).orElseThrow(NotRegisteredException::new);
 
         // post 생성
-        Post post = postFactory.create(postRepository.nextPostId(), userId, requestDTO.getTitle(), requestDTO.getPostBody(), requestDTO.getPostImageUrl());
+        Post post = postFactory.create(author, requestDTO.getTitle(), requestDTO.getPostBody(), requestDTO.getPostImageUrl());
         postRepository.save(post);
 
         // 임시저장글 삭제.
-        postDraftRepository.delete(userId);
+        postDraftRepository.delete(postDraft);
 
         return new PostResponseDTO(new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl()), new PostDTO(post));
     }
 
     // ----------------------------------- 임시작성글 생성 -----------------------------------
+    @Transactional
     public PostDraftResponseDTO saveDraft(String authorizationHeader, PostDraftRequestDTO requestDTO){
         long userId = authValidator.getLoginUserId(authorizationHeader);
         // 이미 임시저장글이 있는 경우 -> 예외 처리.
-        if(postDraftRepository.findCurrentByUserId(userId).isPresent()) throw new ConflictException();
+        if(postDraftRepository.findByAuthorUserId(userId).isPresent()) throw new ConflictException();
 
-        PostDraft postDraft = postDraftFactory.create(postDraftRepository.nextDraftId(), userId, requestDTO);
-        postDraftRepository.save(userId, postDraft);
+        PostDraft postDraft = postDraftFactory.create(userRepository.findById(userId).orElseThrow(NotRegisteredException::new), requestDTO);
+        postDraftRepository.save(postDraft);
 
         return toResponseDTO(postDraft);
     }
 
     // ----------------------------------- 임시작성글 업데이트 -----------------------------------
+    @Transactional
     public PostDraftResponseDTO overwriteDraft(String authorizationHeader, PostDraftRequestDTO requestDTO){
         long userId = authValidator.getLoginUserId(authorizationHeader);
-        PostDraft postDraft = postDraftRepository.findCurrentByUserId(userId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(userId, postDraft.getUserId());
+        PostDraft postDraft = postDraftRepository.findByAuthorUserId(userId).orElseThrow(ContentNotFoundException::new);
+        authValidator.validateOwner(userId, postDraft.getAuthor().getUserId());
         postDraft.overwrite(requestDTO.getTitle(), requestDTO.getPostBody(), requestDTO.getPostImageUrl());
 
         return toResponseDTO(postDraft);
     }
 
     // ----------------------------------- 임시작성글 삭제 -----------------------------------
+    @Transactional
     public void deleteDraft(String authorizationHeader){
         long userId = authValidator.getLoginUserId(authorizationHeader);
-        PostDraft draft = postDraftRepository.findCurrentByUserId(userId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(userId, draft.getUserId());
-        postDraftRepository.delete(userId);
+        PostDraft postDraft = postDraftRepository.findByAuthorUserId(userId).orElseThrow(ContentNotFoundException::new);
+        authValidator.validateOwner(userId, postDraft.getAuthor().getUserId());
+        postDraftRepository.delete(postDraft);
     }
     // ----------------------------------- 추가 메서드 -----------------------------------
 
@@ -105,5 +111,4 @@ public class PostDraftService {
                 postDraft.getVersion()
         );
     }
-
 }

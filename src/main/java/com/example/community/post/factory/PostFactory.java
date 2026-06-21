@@ -2,47 +2,21 @@ package com.example.community.post.factory;
 
 import com.example.community.post.dto.PostRequestDTO;
 import com.example.community.post.entity.Post;
-import com.example.community.post.entity.PostStatus;
-import jakarta.validation.constraints.NotBlank;
+import com.example.community.user.entity.User;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 @Component
 public class PostFactory {
-    public Post create(Long postId, Long authorId, PostRequestDTO requestDTO) {
+    public Post create(User author, PostRequestDTO requestDTO) {
         return new Post(
-                postId,
-                authorId,
+                author,
                 requestDTO.getTitle(),
                 requestDTO.getPostBody(),
-                requestDTO.getPostImageUrl(),
-                LocalDateTime.now(),
-                false,
-                null,
-                1,
-                PostStatus.ACTIVE,
-                0,
-                0,
-                0
+                requestDTO.getPostImageUrl()
         );
     }
 
-    public Post create(Long postId, long authorId, @NotBlank String title, @NotBlank String postBody, String postImageUrl) {
-        return new Post(
-                postId,
-                authorId,
-                title,
-                postBody,
-                postImageUrl,
-                LocalDateTime.now(),
-                false,
-                null,
-                1,
-                PostStatus.ACTIVE,
-                0,
-                0,
-                0
-        );
+    public Post create(User author, String title, String postBody, String postImageUrl) {
+        return new Post(author, title, postBody, postImageUrl);
     }
 }

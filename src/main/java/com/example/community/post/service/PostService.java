@@ -3,19 +3,21 @@ package com.example.community.post.service;
 import com.example.community.global.auth.AuthValidator;
 import com.example.community.global.dto.AuthorDTO;
 import com.example.community.global.exceptions.*;
+import com.example.community.global.mapper.AuthorMapper;
 import com.example.community.post.dto.*;
-import com.example.community.post.entity.Post;
-import com.example.community.post.entity.PostStatus;
-import com.example.community.post.entity.Report;
+import com.example.community.post.entity.*;
 import com.example.community.post.factory.PostFactory;
+import com.example.community.post.factory.PostLikeFactory;
 import com.example.community.post.factory.ReportFactory;
-import com.example.community.post.repository.LikeRepository;
+import com.example.community.post.repository.PostLikeRepository;
 import com.example.community.post.repository.PostRepository;
+import com.example.community.post.repository.PostRevisionRepository;
 import com.example.community.post.repository.ReportRepository;
 import com.example.community.user.entity.User;
 import com.example.community.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
@@ -27,123 +29,153 @@ public class PostService {
     private final AuthValidator authValidator;
     private final UserRepository userRepository;
     private final PostFactory postFactory;
-    private final LikeRepository likeRepository;
+    private final PostLikeRepository postLikeRepository;
     private final ReportRepository reportRepository;
     private final ReportFactory reportFactory;
+    private final PostRevisionRepository postRevisionRepository;
+    private final AuthorMapper authorMapper;
+    // 테스트 환경을 위해 1로 설정.
     private final int REPORT_BLIND_LIMIT = 1;
+    private final PostLikeFactory postLikeFactory;
 
-    public PostService(PostRepository postRepository, AuthValidator authValidator, UserRepository userRepository, PostFactory postFactory, LikeRepository likeRepository, ReportRepository reportRepository, ReportFactory reportFactory) {
+    public PostService(PostRepository postRepository, AuthValidator authValidator, UserRepository userRepository, PostFactory postFactory, PostLikeRepository postLikeRepository, ReportRepository reportRepository, ReportFactory reportFactory, PostRevisionRepository postRevisionRepository, AuthorMapper authorMapper, PostLikeFactory postLikeFactory) {
         this.postRepository = postRepository;
         this.authValidator = authValidator;
         this.userRepository = userRepository;
         this.postFactory = postFactory;
-        this.likeRepository = likeRepository;
+        this.postLikeRepository = postLikeRepository;
         this.reportRepository = reportRepository;
         this.reportFactory = reportFactory;
+        this.postRevisionRepository = postRevisionRepository;
+        this.authorMapper = authorMapper;
+        this.postLikeFactory = postLikeFactory;
     }
     // ----------------------------------- 게시물 업로드 -----------------------------------
+    @Transactional
     public PostResponseDTO upload(String authorizationHeader, @Valid PostRequestDTO postRequestDTO) {
         long authorId = authValidator.getLoginUserId(authorizationHeader);
-        User author = userRepository.findUserById(authorId).orElseThrow(NotRegisteredException::new);
+        User author = userRepository.findById(authorId).orElseThrow(NotRegisteredException::new);
 
-        Post post = postFactory.create(postRepository.nextPostId(), authorId, postRequestDTO);
+        Post post = postFactory.create(author, postRequestDTO);
         postRepository.save(post);
-        AuthorDTO authorDTO = new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl());
-        PostDTO postDTO = new PostDTO(post);
 
-        return new PostResponseDTO(authorDTO, postDTO);
+        return new PostResponseDTO(authorMapper.toAuthorDTO(author), new PostDTO(post));
     }
 
     // ----------------------------------- 게시물 목록 조회 -----------------------------------
+    @Transactional(readOnly = true)
     public List<PostListResponseDTO> getPostList(String authorizationHeader){
         authValidator.getLoginUserId(authorizationHeader);
-        List<Post> postList = postRepository.getAllPosts();
-        return postList.stream().map(this::toPostListResponseDTO).toList();
+        return postRepository.findByStatusNot(PostStatus.DELETED)
+                .stream()
+                .map(this::toPostListResponseDTO)
+                .toList();
     }
 
     // ----------------------------------- 게시물 상세 조회 -----------------------------------
+    @Transactional
     public PostDetailResponseDTO getPostDetail(String authorizationHeader, Long postId){
         authValidator.getLoginUserId(authorizationHeader);
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
+        Post post = postRepository.findByPostId(postId).orElseThrow(ContentNotFoundException::new);
+
+        // 삭제된 게시글은 접근 x
+        if(post.isDeleted()) throw new ContentNotFoundException();
+
         // 블라인드 된 게시글은 권한(관리자나 본인)이 있어야만 접근 가능. 일단은 전부 예외로 처리.
-        if(PostStatus.BLINDED.equals(post.getStatus())) throw new ForbiddenException();
-        User author = userRepository.findUserById(post.getUserId()).orElseThrow(NotRegisteredException::new);
-        AuthorDTO authorDTO = new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl());
+        if(post.isBlinded()) throw new ForbiddenException();
+
+        AuthorDTO authorDTO = authorMapper.toAuthorDTO(post.getAuthor());
         post.increaseViews();
+
         return new PostDetailResponseDTO(authorDTO, new PostDTO(post), toMetaDTO(post));
     }
 
     // ----------------------------------- 게시물 수정 -----------------------------------
+    @Transactional
     public PostDetailResponseDTO modifyPost(String authorizationHeader, Long postId, @Valid PostRequestDTO postRequestDTO){
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(authorizationHeader, post.getUserId());
-        User author = userRepository.findUserById(post.getUserId()).orElseThrow(NotRegisteredException::new);
-        AuthorDTO authorDTO = new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl());
+        Post post = postRepository.findByPostId(postId).orElseThrow(ContentNotFoundException::new);
+        if(post.isDeleted()) throw new ContentNotFoundException();
+        if(post.isBlinded()) throw new ForbiddenException();
+
+        authValidator.validateOwner(authorizationHeader, post.getAuthor().getUserId());
+
+        PostRevision postRevision = new PostRevision(post);
+        postRevisionRepository.save(postRevision);
 
         post.modifyPost(postRequestDTO.getTitle(), postRequestDTO.getPostBody(), postRequestDTO.getPostImageUrl());
-        return new PostDetailResponseDTO(authorDTO, new PostDTO(post), toMetaDTO(post));
+        return new PostDetailResponseDTO(authorMapper.toAuthorDTO(post.getAuthor()), new PostDTO(post), toMetaDTO(post));
     }
 
     // ----------------------------------- 게시물 삭제 -----------------------------------
+    @Transactional
     public void deletePost(String authorizationHeader, Long postId){
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(authorizationHeader, post.getUserId());
+        Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        authValidator.validateOwner(authorizationHeader, post.getAuthor().getUserId());
         post.deletePost();
     }
 
     // ----------------------------------- 좋아요 추가 -----------------------------------
+    @Transactional
     public LikeResponseDTO likePost(String authorizationHeader, Long postId){
-        long userId =  authValidator.getLoginUserId(authorizationHeader);
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        if(likeRepository.exists(postId, userId)) throw new ConflictException();
-        likeRepository.save(postId, userId);
+        long userId = authValidator.getLoginUserId(authorizationHeader);
+        User user =  userRepository.findById(userId).orElseThrow(NotRegisteredException::new);
+        Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        if(postLikeRepository.existsByUserAndPost(userId, postId)) throw new ConflictException();
+
+        PostLike postLike = postLikeFactory.create(user, post);
+        postLikeRepository.save(postLike);
         post.increaseLikes();
         return new LikeResponseDTO(postId, post.getLikes(), true);
     }
     // ----------------------------------- 좋아요 삭제 -----------------------------------
+    @Transactional
     public LikeResponseDTO unlikePost(String authorizationHeader, Long postId){
-        long userId =  authValidator.getLoginUserId(authorizationHeader);
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        if(!likeRepository.exists(postId, userId)) throw new ConflictException();
-        likeRepository.delete(postId, userId);
+        long userId = authValidator.getLoginUserId(authorizationHeader);
+        Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        if (!postLikeRepository.existsByUserAndPost(userId, postId)) throw new ConflictException();
+        postLikeRepository.deletePostlike(userId, postId);
         post.decreaseLikes();
         return new LikeResponseDTO(postId, post.getLikes(), false);
     }
     // ----------------------------------- 게시물 신고 -----------------------------------
+    @Transactional
     public ReportResponseDTO reportPost(String authorizationHeader, Long postId, ReportRequestDTO requestDTO){
-        long userId =  authValidator.getLoginUserId(authorizationHeader);
-        Post post =  postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
+        long reporterId = authValidator.getLoginUserId(authorizationHeader);
+        User reporter =  userRepository.findById(reporterId).orElseThrow(NotRegisteredException::new);
+        Post post =  postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        if (post.isDeleted()) throw new ContentNotFoundException();
         // 이미 해당 게시글에 신고했다면 예외 처리.
-        if(reportRepository.existsByPostIdAndUserId(postId, userId)) throw new AlreadyReportedException();
+        if(reportRepository.existsByPostAndReporter(postId, reporterId)) throw new AlreadyReportedException();
 
-        Report report = reportFactory.create(reportRepository.nextReportId(), postId, userId, requestDTO);
+        Report report = reportFactory.create(post, reporter, requestDTO);
         reportRepository.save(report);
 
         boolean blinded = false;
-        if(reportRepository.countByPostId(postId) >= REPORT_BLIND_LIMIT){
+        if(reportRepository.countByPostPostId(postId) >= REPORT_BLIND_LIMIT){
             blinded = true;
-            if(!post.isBlinded()) post.blind();
+            if(!post.isBlinded()) post.blindPost();
         }
 
         return new ReportResponseDTO(post.getPostId(), report.getReportId(), blinded);
     }
 
     // ----------------------------------- 추가 메서드 -----------------------------------
-
     private PostListResponseDTO toPostListResponseDTO(Post post){
-        if(PostStatus.BLINDED.equals(post.getStatus())){
-            PostItemDTO postItemDTO = new PostItemDTO(post.getPostId(), "숨김 처리된 게시글", post.getCreatedAt(), post.getLikes(), post.getComments(), post.getViews());
-            return new PostListResponseDTO(null, postItemDTO);
+        if (post.isBlinded()) {
+            PostItemDTO postItemDTO = new PostItemDTO(
+                    post.getPostId(),
+                    "숨김 처리된 게시글",
+                    post.getCreatedAt(),
+                    post.getLikes(),
+                    post.getComments(),
+                    post.getViews()
+            );
+            return new PostListResponseDTO(authorMapper.toAuthorDTO(post.getAuthor()), postItemDTO);
         }
-        User author = userRepository.findUserById(post.getUserId()).orElseThrow(NotRegisteredException::new);
-        AuthorDTO authorDTO = new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl());
-
-        PostItemDTO postItemDTO =  new PostItemDTO(post);
-        return new PostListResponseDTO(authorDTO, postItemDTO);
+        return new PostListResponseDTO(authorMapper.toAuthorDTO(post.getAuthor()), new PostItemDTO(post));
     }
 
     private MetaDTO toMetaDTO(Post post){
         return new MetaDTO(post.getLikes(), post.getViews(), post.getComments(), false);
     }
-
 }

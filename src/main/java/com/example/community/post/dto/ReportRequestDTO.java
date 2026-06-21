@@ -1,7 +1,6 @@
 package com.example.community.post.dto;
 
 import com.example.community.post.entity.ReportReason;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 

@@ -11,6 +11,7 @@ import com.example.community.global.auth.AuthValidator;
 import com.example.community.global.dto.AuthorDTO;
 import com.example.community.global.exceptions.ContentNotFoundException;
 import com.example.community.global.exceptions.NotRegisteredException;
+import com.example.community.global.mapper.AuthorMapper;
 import com.example.community.post.entity.Post;
 import com.example.community.post.repository.PostRepository;
 import com.example.community.user.entity.User;
@@ -18,6 +19,7 @@ import com.example.community.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
@@ -32,41 +34,43 @@ public class CommentService {
     private final PostRepository postRepository;
     private final AuthValidator authValidator;
     private final CommentFactory commentFactory;
+    private final AuthorMapper authorMapper;
 
-    public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository, AuthValidator authValidator, CommentFactory commentFactory) {
+    public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository, AuthValidator authValidator, CommentFactory commentFactory, AuthorMapper authorMapper) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.authValidator = authValidator;
         this.commentFactory = commentFactory;
+        this.authorMapper = authorMapper;
     }
     // ----------------------------------- 댓글 작성 -----------------------------------
+    @Transactional
     public CommentResponseDTO uploadComment(Long postId, String authenticationHeader, @Valid CommentRequestDTO commentRequestDTO) {
         long authorId = authValidator.getLoginUserId(authenticationHeader);
-        User author = userRepository.findUserById(authorId).orElseThrow(NotRegisteredException::new);
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        Comment comment = commentFactory.create(commentRepository.nextCommentId(postId), author.getUserId(), postId, commentRequestDTO);
-        commentRepository.save(postId, comment);
+        User author = userRepository.findById(authorId).orElseThrow(NotRegisteredException::new);
+        Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        Comment comment = commentFactory.create(author, post, null, commentRequestDTO);
+        commentRepository.save(comment);
         post.increaseComments();
-        AuthorDTO authorDTO = new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl());
-        CommentDTO commentDTO = toCommentDTO(comment);
-        return new CommentResponseDTO(authorDTO, commentDTO);
+        return new CommentResponseDTO(authorMapper.toAuthorDTO(author), toCommentDTO(comment));
     }
     // ----------------------------------- 댓글 조회 -----------------------------------
+    @Transactional(readOnly = true)
     public List<CommentResponseDTO> getComments(Long postId, String authorizationHeader) {
         authValidator.getLoginUserId(authorizationHeader);
-        postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        List<Comment> comments = commentRepository.findAllByPostId(postId);
-        return comments.stream().map(this::toCommentResponseDTO).toList();
+        postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        return commentRepository.findListByPost(postId).stream().map(this::toCommentResponseDTO).toList();
     }
     // ----------------------------------- 댓글 수정 -----------------------------------
+    @Transactional
     public CommentResponseDTO modifyComment(long postId, long commentId, String authorizationHeader, @Valid CommentRequestDTO commentRequestDTO) {
         long loginUserId = authValidator.getLoginUserId(authorizationHeader);
 
-        postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        Comment comment = commentRepository.findByPostIdAndCommentId(postId, commentId).orElseThrow(ContentNotFoundException::new);
+        postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
+        Comment comment = commentRepository.findCommentWithPost(postId, commentId).orElseThrow(ContentNotFoundException::new);
 
-        authValidator.validateOwner(loginUserId, comment.getUserId());
+        authValidator.validateOwner(loginUserId, comment.getAuthor().getUserId());
 
         comment.modify(commentRequestDTO.getCommentBody());
 
@@ -74,25 +78,21 @@ public class CommentService {
     }
 
     // ----------------------------------- 댓글 삭제 -----------------------------------
-
+    @Transactional
     public CommentRemoveResponseDTO deleteComment(long postId, long commentId, String authorizationHeader) {
         long loginUserId = authValidator.getLoginUserId(authorizationHeader);
-        Post post = postRepository.getPostByPostId(postId).orElseThrow(ContentNotFoundException::new);
-        Comment comment = commentRepository.findByPostIdAndCommentId(postId, commentId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(loginUserId, comment.getUserId());
-
-        commentRepository.delete(postId, comment);
-
+        Comment comment = commentRepository.findCommentWithPost(postId, commentId).orElseThrow(ContentNotFoundException::new);
+        authValidator.validateOwner(loginUserId, comment.getAuthor().getUserId());
+        comment.delete();
 
         return new CommentRemoveResponseDTO(comment.getCommentId(), true, LocalDateTime.now());
     }
 
     // ----------------------------------- 추가 메서드 -----------------------------------
     private CommentResponseDTO toCommentResponseDTO(Comment comment) {
-        User author = userRepository.findUserById(comment.getUserId()).orElseThrow(NotRegisteredException::new);
-        AuthorDTO authorDTO;
-        if(!author.isActive()) authorDTO = new AuthorDTO(author.getStatus(), "알 수 없음", null);
-        else authorDTO = new AuthorDTO(author.getStatus(), author.getNickname(), author.getProfileImageUrl());
+        User author = userRepository.findById(comment.getAuthor().getUserId()).orElseThrow(NotRegisteredException::new);
+        // 공통 mapper로 사용.
+        AuthorDTO authorDTO = authorMapper.toAuthorDTO(author);
         CommentDTO commentDTO = toCommentDTO(comment);
         return new CommentResponseDTO(authorDTO, commentDTO);
     }

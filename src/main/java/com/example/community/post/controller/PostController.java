@@ -55,6 +55,6 @@ public class PostController {
     @PostMapping("/{postId}/report")
     public ResponseEntity<ApiResponse<ReportResponseDTO>> reportPost(@RequestHeader(value = "Authorization") String authorizationHeader, @PathVariable("postId") Long postId, @Valid @RequestBody ReportRequestDTO requestDTO){
         ReportResponseDTO responseDTO = postService.reportPost(authorizationHeader, postId, requestDTO);
-        return ResponseEntity.status(HttpStatus.OK).body(new ApiResponse<>("post_report_success", responseDTO));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>("post_report_success", responseDTO));
     }
 }

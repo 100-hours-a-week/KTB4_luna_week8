@@ -1,7 +1,6 @@
 package com.example.community.post.dto;
 
 import com.example.community.post.entity.Post;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -19,8 +18,8 @@ public class PostDTO {
     public PostDTO(Post post) {
         this.postId = post.getPostId();
         this.title = post.getTitle();
-        this.postBody = post.getPostBody();
-        this.postImageUrl = post.getPostImageUrl();
+        this.postBody = post.getDetail().getPostBody();
+        this.postImageUrl = post.getDetail().getPostImageUrl();
         this.createdAt = post.getCreatedAt();
         this.modified = post.isModified();
         this.modifiedAt = post.getModifiedAt();

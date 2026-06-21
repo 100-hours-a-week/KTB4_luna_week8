@@ -83,7 +83,9 @@ public class GlobalExceptionHandler {
 
     // 500, 내부 서버 오류
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> internalServerError() {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>("internal_server_error", null));
+    public ResponseEntity<ApiResponse<Void>> internalServerError(Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>("internal_server_error", null));
     }
 }
