@@ -1,24 +1,28 @@
 package com.example.community.global.auth;
 
+import com.example.community.global.config.SecurityConfig;
 import com.example.community.post.controller.PostController;
 import com.example.community.post.service.PostService;
 import com.example.community.user.controller.UserController;
 import com.example.community.user.dto.LoginResponseDTO;
+import com.example.community.user.dto.SignUpResponseDTO;
 import com.example.community.user.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,39 +37,44 @@ public class SecurityConfigTest {
     PostService postService;
 
     @Test
-    @DisplayName("로그인 페이지는 인증 없이도 로그인이 가능하다.")
-    void loginRequest_canBeAccessedWithoutLogin() throws Exception{
-        when(userService.login(any())).thenReturn(new LoginResponseDTO("access-token", "refresh-token", "nickname", ""));
+    @DisplayName("로그인 요청은 인증 없이도 로그인이 가능하다.")
+    void loginRequest_canBeAccessedWithoutLogin() throws Exception {
+        when(userService.login(any())).thenReturn(new LoginResponseDTO(1, "access-token", "refresh-token", "nickname", ""));
 
         mockMvc.perform(post("/api/users/login").contentType(MediaType.APPLICATION_JSON).content("""
                     {
                         "email":"test@test.com",
-                        "password":"Test1234!
+                        "password":"Test1234!"
                     }
                 """)).andExpect(status().isOk());
     }
+    @Test
+    @DisplayName("회원가입 요청은 인증 없이도 가능하다.")
+    void signupRequest_canBeAccessedWithoutLogin() throws Exception{
+        when(userService.signUp(any())).thenReturn(new SignUpResponseDTO(1L));
 
-//    @Test
-//    void signupRequest_canBeAccessedWithoutLogin() throws Exception{
-//        mockMvc.perform(post("/api/users/signup").contentType(MediaType.APPLICATION_JSON).content("""
-//                            {
-//                              "email": "test@example.com",
-//                              "password": "password123!"
-//                            }
-//                            """))
-//                .andExpect(status().isOk());
-//    }
-//
-//    @Test
-//    void otherPages_redirectToLogin_whenUserIsNotLoggedIn() throws Exception{
-//        mockMvc.perform(get("/api/posts")).andExpect(status().is3xxRedirection())
-//                .andExpect(redirectedUrlPattern("**/login"));
-//    }
-//
-//    @Test
-//    @WithMockUser
-//    void otherPages_canBeAccessed_whenUserIsLoggedIn() throws Exception{
-//        mockMvc.perform(get("/api/posts"))
-//                .andExpect(status().isOk());
-//    }
+        mockMvc.perform(post("/api/users/signup").contentType(MediaType.APPLICATION_JSON).content("""
+                    {
+                        "email":"test@test.com",
+                        "password":"Test1234!",
+                        "passwordConfirm":"Test1234!",
+                        "nickname":"test1",
+                        "profileImageUrl":""
+                    }
+                """)).andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("그 외 엔드포인트들은 인증이 필요하다.")
+    void otherRequest_deniedWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/posts")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("인증된 사용자는 그 외 엔드포인트에도 요청이 가능하다.")
+    void otherRequest_canBeAccessedWithAuthentication() throws Exception{
+        when(postService.getPostList(anyString())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/posts").with(user("test")).header("Authorization", "Bearer access-token")).andExpect(status().isOk());
+    }
 }
