@@ -57,7 +57,7 @@ public class UserService {
         AuthToken authToken = authTokenFactory.create(user, accessToken, refreshToken);
         tokenRepository.save(authToken);
 
-        return new LoginResponseDTO(accessToken, refreshToken, user.getNickname(), user.getProfileImageUrl());
+        return new LoginResponseDTO(user.getUserId(), accessToken, refreshToken, user.getNickname(), user.getProfileImageUrl());
     }
     // ----------------------------------- 로그아웃, 토큰 삭제 -----------------------------------
     @Transactional
