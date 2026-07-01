@@ -1,6 +1,6 @@
 package com.example.community.user.entity;
 
 public enum UserRole {
-    ADMIN,
-    USER
+    ROLE_ADMIN,
+    ROLE_USER
 }

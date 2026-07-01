@@ -12,7 +12,15 @@ public class UserFactory {
         return new User(
                 requestDTO.getNickname(),
                 requestDTO.getProfileImageUrl(),
-                UserRole.USER,
+                UserRole.ROLE_USER,
+                UserStatus.ACTIVE
+        );
+    }
+    public User create(String nickname, String profileImageUrl, UserRole userRole){
+        return new User(
+                nickname,
+                profileImageUrl,
+                userRole,
                 UserStatus.ACTIVE
         );
     }
