@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/draft-post")
+@RequestMapping("/api/draft-post")
 public class PostDraftController {
     private final PostDraftService postDraftService;
     public PostDraftController(PostDraftService postDraftService) {

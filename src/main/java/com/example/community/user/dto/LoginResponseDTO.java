@@ -6,13 +6,13 @@ import lombok.Data;
 public class LoginResponseDTO {
     private String accessToken;
     private String refreshToken;
-    private String username;
+    private String nickname;
     private String profileImageUrl;
 
     public LoginResponseDTO(String accessToken, String refreshToken, String nickname, String profileImageUrl) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
-        this.username = nickname;
+        this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
     }
 }
