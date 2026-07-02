@@ -1,11 +1,17 @@
 package com.example.community.global.auth;
 
 import com.example.community.global.config.SecurityConfig;
+import com.example.community.global.controller.AdminController;
 import com.example.community.post.controller.PostController;
 import com.example.community.post.service.PostService;
 import com.example.community.user.controller.UserController;
 import com.example.community.user.dto.LoginResponseDTO;
+import com.example.community.user.dto.SignUpRequestDTO;
 import com.example.community.user.dto.SignUpResponseDTO;
+import com.example.community.user.entity.User;
+import com.example.community.user.entity.UserRole;
+import com.example.community.user.entity.UserStatus;
+import com.example.community.user.factory.UserFactory;
 import com.example.community.user.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,20 +19,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {UserController.class, PostController.class})
+@WebMvcTest(controllers = {UserController.class, PostController.class, AdminController.class})
 @Import(SecurityConfig.class)
 public class SecurityConfigTest {
     @Autowired
@@ -35,6 +41,8 @@ public class SecurityConfigTest {
     UserService userService;
     @MockitoBean
     PostService postService;
+
+    private final UserFactory userFactory = new UserFactory();
 
     @Test
     @DisplayName("로그인 요청은 인증 없이도 로그인이 가능하다.")
@@ -76,5 +84,18 @@ public class SecurityConfigTest {
         when(postService.getPostList(anyString())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/posts").with(user("test")).header("Authorization", "Bearer access-token")).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("관리자는 admin 엔드포인트로 요청이 가능하다.")
+    void adminRequest_canBeAccessedWithRole() throws Exception{
+        User admin = userFactory.create("admin1", "", UserRole.ROLE_ADMIN);
+        mockMvc.perform(get("/api/admin").with(user(admin.getNickname()).authorities(new SimpleGrantedAuthority(admin.getRole().name())))).andExpect(status().isOk());
+    }
+    @Test
+    @DisplayName("일반 유저는 admin 엔드포인트로 요청이 불가능.")
+    void adminRequest_deniedWithoutRole() throws Exception{
+        User user = userFactory.create(new SignUpRequestDTO("test1@email.com", "Test1234!", "Test1234!", "user", ""));
+        mockMvc.perform(get("/api/admin").with(user(user.getNickname()).authorities(new SimpleGrantedAuthority(user.getRole().name())))).andExpect(status().isForbidden());
     }
 }
