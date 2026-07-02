@@ -1,0 +1,64 @@
+package com.example.community.global.auth;
+
+import com.example.community.user.entity.User;
+import com.example.community.user.entity.UserRole;
+import com.example.community.user.entity.UserStatus;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+public class JwtTokenProviderTest {
+    private final JwtTokenProvider jwtTokenProvider = new JwtTokenProvider("imwkRwkiiytrPM7KLs3up4f9tf/8ijVSmvxHHp69AU0=", 3000L, 6000L);
+
+    @Test
+    @DisplayName("JWT 토큰을 생성할 수 있다.")
+    void createJwtToken() {
+        User user = new User(1L, "tester", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
+
+        JwtToken jwtToken = jwtTokenProvider.createJwtToken(user);
+
+        assertThat(jwtToken.getGrantType()).isEqualTo("Bearer");
+        assertThat(jwtToken.getAccessToken()).isNotBlank();
+        assertThat(jwtToken.getRefreshToken()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("Access Token을 토대로 UserId를 추출.")
+    void createJwtToken_andExtractUserId(){
+        User user = new User(1L, "test", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
+        JwtToken token = jwtTokenProvider.createJwtToken(user);
+        assertThat(jwtTokenProvider.getUserId(token.getAccessToken())).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Access Token은 role기반 생성, 추출 가능.")
+    void createJwtToken_andExtractUserRole(){
+        User admin = new User(1L, "test", "", UserRole.ROLE_ADMIN, UserStatus.ACTIVE);
+        JwtToken token = jwtTokenProvider.createJwtToken(admin);
+        assertThat(jwtTokenProvider.getRole(token.getAccessToken())).isEqualTo("ROLE_ADMIN");
+    }
+
+    @Test
+    @DisplayName("정상적으로 발급된 토큰은 유효.")
+    void validTokenTest(){
+        User user = new User(1L, "test", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
+        JwtToken token = jwtTokenProvider.createJwtToken(user);
+        assertThat(jwtTokenProvider.validateToken(token.getAccessToken())).isTrue();
+    }
+
+    @Test
+    @DisplayName("만료된 토큰은 유효하지 않음.")
+    void expiredTokenTest() throws InterruptedException {
+        JwtTokenProvider shortProvider = new JwtTokenProvider("imwkRwkiiytrPM7KLs3up4f9tf/8ijVSmvxHHp69AU0=", 0L, 1000L);
+        User user = new User(1L, "test", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
+        JwtToken token = shortProvider.createJwtToken(user);
+        assertThat(jwtTokenProvider.validateToken(token.getAccessToken())).isFalse();
+    }
+
+    @Test
+    @DisplayName("잘못된 토큰은 유효하지 않음.")
+    void invalidTokenTest(){
+        assertThat(jwtTokenProvider.validateToken("invalid_token")).isFalse();
+    }
+}
