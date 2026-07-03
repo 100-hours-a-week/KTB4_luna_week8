@@ -41,13 +41,15 @@ public class SecurityConfigTest {
     UserService userService;
     @MockitoBean
     PostService postService;
+    @MockitoBean
+    JwtTokenProvider jwtTokenProvider;
 
     private final UserFactory userFactory = new UserFactory();
 
     @Test
     @DisplayName("로그인 요청은 인증 없이도 로그인이 가능하다.")
     void loginRequest_canBeAccessedWithoutLogin() throws Exception {
-        when(userService.login(any())).thenReturn(new LoginResponseDTO(1, "access-token", "refresh-token", "nickname", ""));
+        when(userService.login(any())).thenReturn(new LoginResponseDTO(1, new JwtToken("Bearer", "access-token1", "access-token2"), "nickname", ""));
 
         mockMvc.perform(post("/api/users/login").contentType(MediaType.APPLICATION_JSON).content("""
                     {
@@ -81,7 +83,7 @@ public class SecurityConfigTest {
     @Test
     @DisplayName("인증된 사용자는 그 외 엔드포인트에도 요청이 가능하다.")
     void otherRequest_canBeAccessedWithAuthentication() throws Exception{
-        when(postService.getPostList(anyString())).thenReturn(List.of());
+        when(postService.getPostList()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/posts").with(user("test")).header("Authorization", "Bearer access-token")).andExpect(status().isOk());
     }
