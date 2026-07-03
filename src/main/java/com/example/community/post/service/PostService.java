@@ -14,6 +14,7 @@ import com.example.community.post.repository.PostRepository;
 import com.example.community.post.repository.PostRevisionRepository;
 import com.example.community.post.repository.ReportRepository;
 import com.example.community.user.entity.User;
+import com.example.community.user.entity.UserRole;
 import com.example.community.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
@@ -52,8 +53,7 @@ public class PostService {
     }
     // ----------------------------------- 게시물 업로드 -----------------------------------
     @Transactional
-    public PostResponseDTO upload(String authorizationHeader, @Valid PostRequestDTO postRequestDTO) {
-        long authorId = authValidator.getLoginUserId(authorizationHeader);
+    public PostResponseDTO upload(Long authorId, @Valid PostRequestDTO postRequestDTO) {
         User author = userRepository.findById(authorId).orElseThrow(NotRegisteredException::new);
 
         Post post = postFactory.create(author, postRequestDTO);
@@ -64,8 +64,7 @@ public class PostService {
 
     // ----------------------------------- 게시물 목록 조회 -----------------------------------
     @Transactional(readOnly = true)
-    public List<PostListResponseDTO> getPostList(String authorizationHeader){
-        authValidator.getLoginUserId(authorizationHeader);
+    public List<PostListResponseDTO> getPostList(){
         return postRepository.findByStatusNot(PostStatus.DELETED)
                 .stream()
                 .map(this::toPostListResponseDTO)
@@ -74,15 +73,14 @@ public class PostService {
 
     // ----------------------------------- 게시물 상세 조회 -----------------------------------
     @Transactional
-    public PostDetailResponseDTO getPostDetail(String authorizationHeader, Long postId){
-        authValidator.getLoginUserId(authorizationHeader);
+    public PostDetailResponseDTO getPostDetail(UserRole loginUserRole, Long postId){
         Post post = postRepository.findByPostId(postId).orElseThrow(ContentNotFoundException::new);
 
         // 삭제된 게시글은 접근 x
         if(post.isDeleted()) throw new ContentNotFoundException();
 
         // 블라인드 된 게시글은 권한(관리자나 본인)이 있어야만 접근 가능. 일단은 전부 예외로 처리.
-        if(post.isBlinded()) throw new ForbiddenException();
+        if(post.isBlinded() && !UserRole.ROLE_ADMIN.equals(loginUserRole)) throw new ForbiddenException();
 
         AuthorDTO authorDTO = authorMapper.toAuthorDTO(post.getAuthor());
         post.increaseViews();
@@ -92,13 +90,11 @@ public class PostService {
 
     // ----------------------------------- 게시물 수정 -----------------------------------
     @Transactional
-    public PostDetailResponseDTO modifyPost(String authorizationHeader, Long postId, @Valid PostRequestDTO postRequestDTO){
+    public PostDetailResponseDTO modifyPost(Long userId, Long postId, @Valid PostRequestDTO postRequestDTO){
         Post post = postRepository.findByPostId(postId).orElseThrow(ContentNotFoundException::new);
         if(post.isDeleted()) throw new ContentNotFoundException();
         if(post.isBlinded()) throw new ForbiddenException();
-
-        authValidator.validateOwner(authorizationHeader, post.getAuthor().getUserId());
-
+        authValidator.validateOwner(userId, post.getAuthor().getUserId());
         PostRevision postRevision = new PostRevision(post);
         postRevisionRepository.save(postRevision);
 
@@ -108,16 +104,16 @@ public class PostService {
 
     // ----------------------------------- 게시물 삭제 -----------------------------------
     @Transactional
-    public void deletePost(String authorizationHeader, Long postId){
+    public void deletePost(Long userId, Long postId){
         Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
-        authValidator.validateOwner(authorizationHeader, post.getAuthor().getUserId());
+        authValidator.validateOwner(userId, post.getAuthor().getUserId());
+
         post.deletePost();
     }
 
     // ----------------------------------- 좋아요 추가 -----------------------------------
     @Transactional
-    public LikeResponseDTO likePost(String authorizationHeader, Long postId){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public LikeResponseDTO likePost(Long userId, Long postId){
         User user =  userRepository.findById(userId).orElseThrow(NotRegisteredException::new);
         Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         if(postLikeRepository.existsByUserAndPost(userId, postId)) throw new ConflictException();
@@ -129,8 +125,7 @@ public class PostService {
     }
     // ----------------------------------- 좋아요 삭제 -----------------------------------
     @Transactional
-    public LikeResponseDTO unlikePost(String authorizationHeader, Long postId){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public LikeResponseDTO unlikePost(Long userId, Long postId){
         Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         if (!postLikeRepository.existsByUserAndPost(userId, postId)) throw new ConflictException();
         postLikeRepository.deletePostlike(userId, postId);
@@ -139,8 +134,7 @@ public class PostService {
     }
     // ----------------------------------- 게시물 신고 -----------------------------------
     @Transactional
-    public ReportResponseDTO reportPost(String authorizationHeader, Long postId, ReportRequestDTO requestDTO){
-        long reporterId = authValidator.getLoginUserId(authorizationHeader);
+    public ReportResponseDTO reportPost(Long reporterId, Long postId, ReportRequestDTO requestDTO){
         User reporter =  userRepository.findById(reporterId).orElseThrow(NotRegisteredException::new);
         Post post =  postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         if (post.isDeleted()) throw new ContentNotFoundException();
