@@ -6,10 +6,14 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.List;
 
 
 @Component
@@ -60,6 +64,18 @@ public class JwtTokenProvider {
             return false;
         }
     }
+
+    public Authentication getAuthentication(String token){
+        long userId = getUserId(token);
+        String role = getRole(token);
+
+        return new UsernamePasswordAuthenticationToken(
+                String.valueOf(userId),
+                null,
+                List.of(new SimpleGrantedAuthority(role))
+        );
+    }
+
     private String createToken(User user, long expirationMs) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMs);

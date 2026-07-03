@@ -1,15 +1,12 @@
 package com.example.community.user.service;
 
-import com.example.community.global.auth.AuthToken;
-import com.example.community.global.auth.AuthTokenFactory;
-import com.example.community.global.auth.AuthValidator;
+import com.example.community.global.auth.*;
 import com.example.community.global.exceptions.*;
 import com.example.community.user.dto.*;
 import com.example.community.user.entity.User;
 import com.example.community.user.entity.UserCredential;
 import com.example.community.user.factory.UserCredentialFactory;
 import com.example.community.user.factory.UserFactory;
-import com.example.community.global.auth.TokenRepository;
 import com.example.community.user.repository.UserCredentialRepository;
 import com.example.community.user.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -24,20 +21,18 @@ import java.time.LocalDateTime;
 public class UserService {
     private final UserRepository userRepository;
     private final UserCredentialRepository userCredentialRepository;
-    private final TokenRepository tokenRepository;
     private final AuthValidator authValidator;
     private final UserFactory userFactory;
     private final UserCredentialFactory userCredentialFactory;
-    private final AuthTokenFactory authTokenFactory;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public UserService(UserRepository userRepository, UserCredentialRepository userCredentialRepository, TokenRepository tokenRepository, AuthValidator authValidator, UserFactory userFactory, UserCredentialFactory userCredentialFactory, AuthTokenFactory authTokenFactory) {
+    public UserService(UserRepository userRepository, UserCredentialRepository userCredentialRepository, AuthValidator authValidator, UserFactory userFactory, UserCredentialFactory userCredentialFactory, JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
         this.userCredentialRepository = userCredentialRepository;
-        this.tokenRepository = tokenRepository;
         this.authValidator = authValidator;
         this.userFactory = userFactory;
         this.userCredentialFactory = userCredentialFactory;
-        this.authTokenFactory = authTokenFactory;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     // ----------------------------------- 로그인, 토큰 생성 -----------------------------------
@@ -52,19 +47,15 @@ public class UserService {
         if (!user.isActive()) throw new NotRegisteredException();
         if (!credential.matchPassword(password)) throw new PasswordInvalidException();
 
-        String accessToken = "access-token" + user.getUserId();
-        String refreshToken = "refresh-token" + user.getUserId();
-        AuthToken authToken = authTokenFactory.create(user, accessToken, refreshToken);
-        tokenRepository.save(authToken);
+        JwtToken token = jwtTokenProvider.createJwtToken(user);
 
-        return new LoginResponseDTO(user.getUserId(), accessToken, refreshToken, user.getNickname(), user.getProfileImageUrl());
+        return new LoginResponseDTO(user.getUserId(), token, user.getNickname(), user.getProfileImageUrl());
     }
     // ----------------------------------- 로그아웃, 토큰 삭제 -----------------------------------
     @Transactional
     public void logout(String authorizationHeader){
         authValidator.getLoginUserId(authorizationHeader);
         String accessToken = authorizationHeader.substring("Bearer ".length());
-        tokenRepository.deleteByAccessToken(accessToken);
     }
     // ----------------------------------- 회원가입(유저 생성) -----------------------------------
     @Transactional
