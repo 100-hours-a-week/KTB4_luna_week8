@@ -92,8 +92,7 @@ class PostControllerJwtTest {
     @Test
     @DisplayName("JWT 인증된 회원은 게시글을 작성할 수 있다.")
     void uploadPost_withJwt() throws Exception {
-        when(postService.upload(eq(1L), any(PostRequestDTO.class)))
-                .thenReturn(postResponse());
+        when(postService.upload(eq(1L), any(PostRequestDTO.class))).thenReturn(postResponse());
 
         mockMvc.perform(post("/api/posts")
                         .with(authentication(authentication))
@@ -113,8 +112,7 @@ class PostControllerJwtTest {
     @Test
     @DisplayName("JWT 인증된 회원은 게시글을 수정할 수 있다.")
     void modifyPost_withJwt() throws Exception {
-        when(postService.modifyPost(eq(1L), eq(1L), any(PostRequestDTO.class)))
-                .thenReturn(postDetailResponse());
+        when(postService.modifyPost(eq(1L), eq(1L), any(PostRequestDTO.class))).thenReturn(postDetailResponse());
 
         mockMvc.perform(patch("/api/posts/1")
                         .with(authentication(authentication))
@@ -144,8 +142,7 @@ class PostControllerJwtTest {
     @Test
     @DisplayName("JWT 인증된 회원은 게시글에 좋아요를 누를 수 있다.")
     void likePost_withJwt() throws Exception {
-        when(postService.likePost(1L, 1L))
-                .thenReturn(new LikeResponseDTO(1L, 1, true));
+        when(postService.likePost(1L, 1L)).thenReturn(new LikeResponseDTO(1L, 1, true));
 
         mockMvc.perform(post("/api/posts/1/likes")
                         .with(authentication(authentication)))
@@ -157,8 +154,7 @@ class PostControllerJwtTest {
     @Test
     @DisplayName("JWT 인증된 회원은 게시글 좋아요를 취소할 수 있다.")
     void unlikePost_withJwt() throws Exception {
-        when(postService.unlikePost(1L, 1L))
-                .thenReturn(new LikeResponseDTO(1L, 0, false));
+        when(postService.unlikePost(1L, 1L)).thenReturn(new LikeResponseDTO(1L, 0, false));
 
         mockMvc.perform(delete("/api/posts/1/likes")
                         .with(authentication(authentication)))
@@ -170,8 +166,7 @@ class PostControllerJwtTest {
     @Test
     @DisplayName("JWT 인증된 회원은 게시글을 신고할 수 있다.")
     void reportPost_withJwt() throws Exception {
-        when(postService.reportPost(eq(1L), eq(1L), any(ReportRequestDTO.class)))
-                .thenReturn(new ReportResponseDTO(1L, 1L, true));
+        when(postService.reportPost(eq(1L), eq(1L), any(ReportRequestDTO.class))).thenReturn(new ReportResponseDTO(1L, 1L, true));
 
         mockMvc.perform(post("/api/posts/1/report")
                         .with(authentication(authentication))
