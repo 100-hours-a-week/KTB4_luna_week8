@@ -46,8 +46,7 @@ public class CommentService {
     }
     // ----------------------------------- 댓글 작성 -----------------------------------
     @Transactional
-    public CommentResponseDTO uploadComment(Long postId, String authenticationHeader, @Valid CommentRequestDTO commentRequestDTO) {
-        long authorId = authValidator.getLoginUserId(authenticationHeader);
+    public CommentResponseDTO uploadComment(Long postId, Long authorId, @Valid CommentRequestDTO commentRequestDTO) {
         User author = userRepository.findById(authorId).orElseThrow(NotRegisteredException::new);
         Post post = postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         Comment comment = commentFactory.create(author, post, null, commentRequestDTO);
@@ -57,15 +56,13 @@ public class CommentService {
     }
     // ----------------------------------- 댓글 조회 -----------------------------------
     @Transactional(readOnly = true)
-    public List<CommentResponseDTO> getComments(Long postId, String authorizationHeader) {
-        authValidator.getLoginUserId(authorizationHeader);
+    public List<CommentResponseDTO> getComments(Long postId) {
         postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         return commentRepository.findListByPost(postId).stream().map(this::toCommentResponseDTO).toList();
     }
     // ----------------------------------- 댓글 수정 -----------------------------------
     @Transactional
-    public CommentResponseDTO modifyComment(long postId, long commentId, String authorizationHeader, @Valid CommentRequestDTO commentRequestDTO) {
-        long loginUserId = authValidator.getLoginUserId(authorizationHeader);
+    public CommentResponseDTO modifyComment(long postId, long commentId, long loginUserId , @Valid CommentRequestDTO commentRequestDTO) {
 
         postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         Comment comment = commentRepository.findCommentWithPost(postId, commentId).orElseThrow(ContentNotFoundException::new);
@@ -79,8 +76,7 @@ public class CommentService {
 
     // ----------------------------------- 댓글 삭제 -----------------------------------
     @Transactional
-    public CommentRemoveResponseDTO deleteComment(long postId, long commentId, String authorizationHeader) {
-        long loginUserId = authValidator.getLoginUserId(authorizationHeader);
+    public CommentRemoveResponseDTO deleteComment(long postId, long commentId, long loginUserId) {
         Comment comment = commentRepository.findCommentWithPost(postId, commentId).orElseThrow(ContentNotFoundException::new);
         authValidator.validateOwner(loginUserId, comment.getAuthor().getUserId());
         comment.delete();

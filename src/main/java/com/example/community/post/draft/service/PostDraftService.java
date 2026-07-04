@@ -44,15 +44,13 @@ public class PostDraftService {
 
     // ----------------------------------- 임시작성글 조회 -----------------------------------
     @Transactional(readOnly = true)
-    public Optional<PostDraftResponseDTO> getCurrentDraft(String authorizationHeader){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public Optional<PostDraftResponseDTO> getCurrentDraft(Long userId){
         return postDraftRepository.findByAuthorUserId(userId).map(this::toResponseDTO);
     }
 
     // ----------------------------------- 임시작성글 포스팅 -----------------------------------
     @Transactional
-    public PostResponseDTO publishDraft(String authorizationHeader, PostDraftRequestDTO requestDTO){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public PostResponseDTO publishDraft(Long userId, PostDraftRequestDTO requestDTO){
         PostDraft postDraft = postDraftRepository.findByAuthorUserId(userId).orElseThrow(ContentNotFoundException::new);
         authValidator.validateOwner(userId, postDraft.getAuthor().getUserId());
         User author = userRepository.findById(userId).orElseThrow(NotRegisteredException::new);
@@ -69,8 +67,7 @@ public class PostDraftService {
 
     // ----------------------------------- 임시작성글 생성 -----------------------------------
     @Transactional
-    public PostDraftResponseDTO saveDraft(String authorizationHeader, PostDraftRequestDTO requestDTO){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public PostDraftResponseDTO saveDraft(Long userId, PostDraftRequestDTO requestDTO){
         // 이미 임시저장글이 있는 경우 -> 예외 처리.
         if(postDraftRepository.findByAuthorUserId(userId).isPresent()) throw new ConflictException();
 
@@ -82,8 +79,7 @@ public class PostDraftService {
 
     // ----------------------------------- 임시작성글 업데이트 -----------------------------------
     @Transactional
-    public PostDraftResponseDTO overwriteDraft(String authorizationHeader, PostDraftRequestDTO requestDTO){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public PostDraftResponseDTO overwriteDraft(Long userId, PostDraftRequestDTO requestDTO){
         PostDraft postDraft = postDraftRepository.findByAuthorUserId(userId).orElseThrow(ContentNotFoundException::new);
         authValidator.validateOwner(userId, postDraft.getAuthor().getUserId());
         postDraft.overwrite(requestDTO.getTitle(), requestDTO.getPostBody(), requestDTO.getPostImageUrl());
@@ -93,8 +89,7 @@ public class PostDraftService {
 
     // ----------------------------------- 임시작성글 삭제 -----------------------------------
     @Transactional
-    public void deleteDraft(String authorizationHeader){
-        long userId = authValidator.getLoginUserId(authorizationHeader);
+    public void deleteDraft(Long userId){
         PostDraft postDraft = postDraftRepository.findByAuthorUserId(userId).orElseThrow(ContentNotFoundException::new);
         authValidator.validateOwner(userId, postDraft.getAuthor().getUserId());
         postDraftRepository.delete(postDraft);
