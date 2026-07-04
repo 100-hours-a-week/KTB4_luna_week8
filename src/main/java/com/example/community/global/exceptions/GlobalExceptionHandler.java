@@ -24,6 +24,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse<>("invalid_input", errors));
     }
 
+    // 400, 기타 올바르지 않은 입력 형식.
+    @ExceptionHandler(InvalidInputException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidInputException(InvalidInputException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>("invalid_input", null));
+    }
+
     // 401, 등록되지 않은 이메일 -> 유저 확인되지 않음
     @ExceptionHandler(NotRegisteredException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleNotRegisteredFoundException(NotRegisteredException e) {
