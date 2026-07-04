@@ -6,6 +6,8 @@ import com.example.community.user.entity.UserRole;
 import com.example.community.user.entity.UserStatus;
 import com.example.community.user.repository.UserCredentialRepository;
 import com.example.community.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -128,8 +130,7 @@ public class UserIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("password_modify_success"));
 
-        UserCredential updatedCredential =
-                userCredentialRepository.findById(user.getUserId()).orElseThrow();
+        UserCredential updatedCredential = userCredentialRepository.findById(user.getUserId()).orElseThrow();
 
         assertThat(updatedCredential.matchPassword("New12345!")).isTrue();
     }
@@ -164,7 +165,7 @@ public class UserIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        com.fasterxml.jackson.databind.JsonNode json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response);
+        JsonNode json = new ObjectMapper().readTree(response);
 
         return json.get("data").get("token").get("accessToken").asText();
     }
