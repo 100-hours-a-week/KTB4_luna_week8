@@ -2,10 +2,13 @@ package com.example.community.user.controller;
 
 import com.example.community.global.ApiResponse;
 import com.example.community.user.dto.*;
+import com.example.community.user.entity.UserRole;
 import com.example.community.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,8 +24,9 @@ public class UserController {
         return ResponseEntity.ok(new ApiResponse<>("user_login_success", responseDTO));
     }
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout(@RequestHeader(value = "Authorization") String authorizationHeader) {
-        userService.logout(authorizationHeader);
+    public ResponseEntity<ApiResponse<String>> logout(Authentication authentication) {
+        Long loginUserId = getLoginUserId(authentication);
+        userService.logout(loginUserId);
         return ResponseEntity.ok(new ApiResponse<>("logout_success", null));
     }
     @PostMapping("/signup")
@@ -31,18 +35,38 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>("user_register_success", responseDTO));
     }
     @PatchMapping("/{userId}/info")
-    public ResponseEntity<ApiResponse<ModifyInfoResponseDTO>> modifyInfo(@PathVariable Long userId, @RequestHeader(value = "Authorization") String authorizationHeader,@Valid @RequestBody ModifyInfoRequestDTO requestDTO){
-        ModifyInfoResponseDTO responseDTO = userService.modifyInfo(userId, authorizationHeader, requestDTO);
+    public ResponseEntity<ApiResponse<ModifyInfoResponseDTO>> modifyInfo(Authentication authentication, @PathVariable Long userId, @Valid @RequestBody ModifyInfoRequestDTO requestDTO){
+        Long loginUserId = getLoginUserId(authentication);
+
+        ModifyInfoResponseDTO responseDTO = userService.modifyInfo(loginUserId, userId, requestDTO);
         return ResponseEntity.ok().body(new ApiResponse<>("user_modify_success", responseDTO));
     }
     @PatchMapping("/{userId}/password")
-    public ResponseEntity<ApiResponse<String>> modifyPassword(@PathVariable Long userId, @RequestHeader(value = "Authorization") String authorizationHeader, @Valid @RequestBody ModifyPasswordRequestDTO requestDTO){
-        userService.modifyPassword(userId, authorizationHeader, requestDTO);
+    public ResponseEntity<ApiResponse<String>> modifyPassword(Authentication authentication, @PathVariable Long userId, @Valid @RequestBody ModifyPasswordRequestDTO requestDTO){
+        Long loginUserId = getLoginUserId(authentication);
+        userService.modifyPassword(loginUserId, userId, requestDTO);
         return ResponseEntity.ok().body(new ApiResponse<>("password_modify_success", null));
     }
     @DeleteMapping("/{userId}")
-    public ResponseEntity<ApiResponse<WithdrawResponseDTO>>  withdraw(@PathVariable Long userId, @RequestHeader(value = "Authorization") String authorizationHeader){
-        WithdrawResponseDTO responseDTO = userService.withdraw(userId, authorizationHeader);
+    public ResponseEntity<ApiResponse<WithdrawResponseDTO>>  withdraw(Authentication authentication, @PathVariable Long userId){
+        Long loginUserId = getLoginUserId(authentication);
+        WithdrawResponseDTO responseDTO = userService.withdraw(loginUserId, userId);
         return ResponseEntity.ok().body(new ApiResponse<>("user_withdraw_success", responseDTO));
+    }
+
+    private Long getLoginUserId(Authentication authentication){
+        return Long.valueOf(authentication.getName());
+    }
+
+    private UserRole getLoginUserRole(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority ->
+                        authority.equals(UserRole.ROLE_ADMIN.name())
+                                || authority.equals(UserRole.ROLE_USER.name())
+                )
+                .map(UserRole::valueOf)
+                .findFirst()
+                .orElse(UserRole.ROLE_USER);
     }
 }
