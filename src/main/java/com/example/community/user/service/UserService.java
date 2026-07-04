@@ -53,9 +53,8 @@ public class UserService {
     }
     // ----------------------------------- 로그아웃, 토큰 삭제 -----------------------------------
     @Transactional
-    public void logout(String authorizationHeader){
-        authValidator.getLoginUserId(authorizationHeader);
-        String accessToken = authorizationHeader.substring("Bearer ".length());
+    public void logout(Long userId){
+
     }
     // ----------------------------------- 회원가입(유저 생성) -----------------------------------
     @Transactional
@@ -72,13 +71,13 @@ public class UserService {
 
     // ----------------------------------- 유저 정보 수정(이름, 프로필사진) -----------------------------------
     @Transactional
-    public ModifyInfoResponseDTO modifyInfo(Long userId, String authorizationHeader,@Valid ModifyInfoRequestDTO requestDTO){
-        authValidator.validateOwner(authorizationHeader, userId);
+    public ModifyInfoResponseDTO modifyInfo(Long loginUserId, Long targetUserId, @Valid ModifyInfoRequestDTO requestDTO){
+        authValidator.validateOwner(loginUserId, targetUserId);
         String nickname = requestDTO.getNickname();
         String profileImageUrl = requestDTO.getProfileImageUrl();
-        if(userRepository.existsByNicknameAndUserIdNot(nickname, userId)) throw new AlreadyExistsException();
+        if(userRepository.existsByNicknameAndUserIdNot(nickname, targetUserId)) throw new AlreadyExistsException();
 
-        User user =  userRepository.findById(userId).orElseThrow(NotRegisteredException::new);
+        User user =  userRepository.findById(targetUserId).orElseThrow(NotRegisteredException::new);
         LocalDateTime updatedAt = LocalDateTime.now();
 
         user.modifyProfile(nickname, profileImageUrl);
@@ -86,19 +85,19 @@ public class UserService {
     }
     // ----------------------------------- 유저 정보 수정(비밀번호) -----------------------------------
     @Transactional
-    public void modifyPassword(Long userId, String authorizationHeader, @Valid ModifyPasswordRequestDTO requestDTO){
-        authValidator.validateOwner(authorizationHeader, userId);
+    public void modifyPassword(Long loginUserId, Long targetUserId, @Valid ModifyPasswordRequestDTO requestDTO){
+        authValidator.validateOwner(loginUserId, targetUserId);
 
-        UserCredential credential = userCredentialRepository.findById(userId).orElseThrow(NotRegisteredException::new);
+        UserCredential credential = userCredentialRepository.findById(targetUserId).orElseThrow(NotRegisteredException::new);
         if (credential.matchPassword(requestDTO.getPassword())) throw new InvalidInputException();
 
         credential.modifyPassword(requestDTO.getPassword());
     }
     // ----------------------------------- 유저 탈퇴(유저 삭제) -----------------------------------
     @Transactional
-    public WithdrawResponseDTO withdraw(Long userId, String authorizationHeader){
-        authValidator.validateOwner(authorizationHeader, userId);
-        User user = userRepository.findById(userId).orElseThrow(NotRegisteredException::new);
+    public WithdrawResponseDTO withdraw(Long loginUserId, Long targetUserId){
+        authValidator.validateOwner(loginUserId, targetUserId);
+        User user = userRepository.findById(targetUserId).orElseThrow(NotRegisteredException::new);
         user.withDraw();
         return new WithdrawResponseDTO(LocalDateTime.now());
     }
