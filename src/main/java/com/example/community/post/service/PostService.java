@@ -79,7 +79,7 @@ public class PostService {
         // 삭제된 게시글은 접근 x
         if(post.isDeleted()) throw new ContentNotFoundException();
 
-        // 블라인드 된 게시글은 권한(관리자나 본인)이 있어야만 접근 가능. 일단은 전부 예외로 처리.
+        // 블라인드 된 게시글은 권한(관리자)이 있어야만 접근 가능.
         if(post.isBlinded() && !UserRole.ROLE_ADMIN.equals(loginUserRole)) throw new ForbiddenException();
 
         AuthorDTO authorDTO = authorMapper.toAuthorDTO(post.getAuthor());
