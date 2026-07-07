@@ -1,7 +1,6 @@
 package com.example.community.post.service;
 
 import com.example.community.global.auth.AuthValidator;
-import com.example.community.global.auth.TokenRepository;
 import com.example.community.global.exceptions.ContentNotFoundException;
 import com.example.community.global.exceptions.ForbiddenException;
 import com.example.community.global.exceptions.NotRegisteredException;
@@ -106,8 +105,7 @@ class PostServiceTest {
     void upload_userNotFoundThrowsException() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.upload(1L, postRequest("title", "body", "")))
-                .isInstanceOf(NotRegisteredException.class);
+        assertThatThrownBy(() -> postService.upload(1L, postRequest("title", "body", ""))).isInstanceOf(NotRegisteredException.class);
 
         verify(postRepository, never()).save(any());
     }
@@ -154,8 +152,7 @@ class PostServiceTest {
     void getPostDetail_notFoundThrowsException() {
         when(postRepository.findByPostId(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L))
-                .isInstanceOf(ContentNotFoundException.class);
+        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L)).isInstanceOf(ContentNotFoundException.class);
     }
 
     @Test
@@ -164,8 +161,7 @@ class PostServiceTest {
         post.deletePost();
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L))
-                .isInstanceOf(ContentNotFoundException.class);
+        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L)).isInstanceOf(ContentNotFoundException.class);
     }
 
     @Test
@@ -174,8 +170,7 @@ class PostServiceTest {
         post.blindPost();
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L))
-                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L)).isInstanceOf(ForbiddenException.class);
     }
 
     @Test
@@ -211,8 +206,7 @@ class PostServiceTest {
     void modifyPost_notOwnerThrowsForbidden() {
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.modifyPost(2L, 1L, postRequest("new", "body", "")))
-                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> postService.modifyPost(2L, 1L, postRequest("new", "body", ""))).isInstanceOf(ForbiddenException.class);
     }
 
     @Test
@@ -234,11 +228,11 @@ class PostServiceTest {
                 .isInstanceOf(ForbiddenException.class);
     }
     // 테스트용 postRequestDTO 생성기.
-    private PostRequestDTO postRequest(String title, String body, String imageUrl) {
+    private PostRequestDTO postRequest(String title, String body, String postImageUrl) {
         PostRequestDTO request = new PostRequestDTO();
         request.setTitle(title);
         request.setPostBody(body);
-        request.setPostImageUrl(imageUrl);
+        request.setPostImageUrl(postImageUrl);
         return request;
     }
 }
