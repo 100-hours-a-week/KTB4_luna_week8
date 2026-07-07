@@ -58,15 +58,4 @@ public class UserController {
         return Long.valueOf(authentication.getName());
     }
 
-    private UserRole getLoginUserRole(Authentication authentication) {
-        return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(authority ->
-                        authority.equals(UserRole.ROLE_ADMIN.name())
-                                || authority.equals(UserRole.ROLE_USER.name())
-                )
-                .map(UserRole::valueOf)
-                .findFirst()
-                .orElse(UserRole.ROLE_USER);
-    }
 }

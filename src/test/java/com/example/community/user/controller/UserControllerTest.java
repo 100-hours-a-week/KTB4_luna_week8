@@ -284,7 +284,7 @@ public class UserControllerTest {
     @Test
     @DisplayName("회원정보 수정 성공 시 200")
     void modifyInfo_success_returns200() throws Exception {
-        when(userService.modifyInfo(eq(1L), eq(1L), any(ModifyInfoRequestDTO.class))).thenReturn(new ModifyInfoResponseDTO(1L, "newName", "", LocalDateTime.now()));
+        when(userService.modifyInfo(eq(1L), eq(1L), any(ModifyInfoRequestDTO.class))).thenReturn(new ModifyInfoResponseDTO(1L, "newName", "", LocalDateTime.of(2026, 7, 4, 12, 0)));
 
         mockMvc.perform(patch("/api/users/1/info")
                         .with(authentication(authentication))
@@ -470,7 +470,7 @@ public class UserControllerTest {
     @Test
     @DisplayName("회원 탈퇴 성공 시 200")
     void withdraw_success_returns200() throws Exception {
-        when(userService.withdraw(1L, 1L)).thenReturn(new WithdrawResponseDTO(LocalDateTime.now()));
+        when(userService.withdraw(1L, 1L)).thenReturn(new WithdrawResponseDTO(LocalDateTime.of(2026, 7, 4, 12, 0)));
 
         mockMvc.perform(delete("/api/users/1")
                         .with(authentication(authentication)))
