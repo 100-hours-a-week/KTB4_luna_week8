@@ -5,12 +5,10 @@ import com.example.community.comment.dto.CommentRequestDTO;
 import com.example.community.comment.dto.CommentResponseDTO;
 import com.example.community.comment.service.CommentService;
 import com.example.community.global.ApiResponse;
-import com.example.community.user.entity.UserRole;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,17 +46,5 @@ public class CommentController {
     }
     private Long getLoginUserId(org.springframework.security.core.Authentication authentication){
         return Long.valueOf(authentication.getName());
-    }
-
-    private UserRole getLoginUserRole(org.springframework.security.core.Authentication authentication) {
-        return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(authority ->
-                        authority.equals(UserRole.ROLE_ADMIN.name())
-                                || authority.equals(UserRole.ROLE_USER.name())
-                )
-                .map(UserRole::valueOf)
-                .findFirst()
-                .orElse(UserRole.ROLE_USER);
     }
 }

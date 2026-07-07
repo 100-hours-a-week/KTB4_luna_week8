@@ -63,7 +63,6 @@ public class CommentService {
     // ----------------------------------- 댓글 수정 -----------------------------------
     @Transactional
     public CommentResponseDTO modifyComment(long postId, long commentId, long loginUserId , @Valid CommentRequestDTO commentRequestDTO) {
-
         postRepository.findById(postId).orElseThrow(ContentNotFoundException::new);
         Comment comment = commentRepository.findCommentWithPost(postId, commentId).orElseThrow(ContentNotFoundException::new);
 
@@ -92,7 +91,6 @@ public class CommentService {
         CommentDTO commentDTO = toCommentDTO(comment);
         return new CommentResponseDTO(authorDTO, commentDTO);
     }
-
     private CommentDTO toCommentDTO(Comment comment) {
         return new CommentDTO(
                 comment.getCommentId(),
