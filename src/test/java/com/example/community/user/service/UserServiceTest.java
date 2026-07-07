@@ -41,7 +41,9 @@ public class UserServiceTest {
     @Mock
     UserCredentialFactory userCredentialFactory;
 
-    @InjectMocks UserService userService;
+    @InjectMocks
+    UserService userService;
+
     User user;
     UserCredential credential;
     JwtToken jwtToken;
@@ -182,8 +184,7 @@ public class UserServiceTest {
     void modifyInfo_nicknameAlreadyExists_throwsAlreadyExistsException() {
         when(userRepository.existsByNicknameAndUserIdNot("newName", 1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.modifyInfo(1L, 1L, modifyInfoRequest))
-                .isInstanceOf(AlreadyExistsException.class);
+        assertThatThrownBy(() -> userService.modifyInfo(1L, 1L, modifyInfoRequest)).isInstanceOf(AlreadyExistsException.class);
     }
     @Test
     @DisplayName("비밀번호 변경 성공 시 정상 처리")
