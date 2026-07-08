@@ -5,12 +5,10 @@ import com.example.community.post.draft.dto.PostDraftRequestDTO;
 import com.example.community.post.draft.dto.PostDraftResponseDTO;
 import com.example.community.post.draft.service.PostDraftService;
 import com.example.community.post.dto.PostResponseDTO;
-import com.example.community.user.entity.UserRole;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
@@ -61,17 +59,5 @@ public class PostDraftController {
     }
     private Long getLoginUserId(Authentication authentication){
         return Long.valueOf(authentication.getName());
-    }
-
-    private UserRole getLoginUserRole(Authentication authentication) {
-        return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(authority ->
-                        authority.equals(UserRole.ROLE_ADMIN.name())
-                                || authority.equals(UserRole.ROLE_USER.name())
-                )
-                .map(UserRole::valueOf)
-                .findFirst()
-                .orElse(UserRole.ROLE_USER);
     }
 }
