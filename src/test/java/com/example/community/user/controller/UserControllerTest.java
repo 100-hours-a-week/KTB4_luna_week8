@@ -140,8 +140,8 @@ public class UserControllerTest {
     }
 
     @Test
-    @DisplayName("로그아웃 성공 시 204")
-    void logout_success_returns204() throws Exception {
+    @DisplayName("로그아웃 성공 시 200")
+    void logout_success_returns200() throws Exception {
         mockMvc.perform(post("/api/users/logout")
                         .with(authentication(authentication)))
                 .andExpect(status().isOk());
