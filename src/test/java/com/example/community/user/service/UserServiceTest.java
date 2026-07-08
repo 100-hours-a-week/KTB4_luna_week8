@@ -111,6 +111,15 @@ public class UserServiceTest {
 
         assertThatThrownBy(() -> userService.login(loginRequest)).isInstanceOf(PasswordInvalidException.class);
     }
+
+    @Test
+    @DisplayName("탈퇴한 유저가 로그인 시도 시 401")
+    void login_withDrawnAccount_throwsNotRegisteredException() {
+        user.withDraw();
+        when(userCredentialRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(credential));
+        assertThatThrownBy(() -> userService.login(loginRequest)).isInstanceOf(NotRegisteredException.class);
+    }
+
     @Test
     @DisplayName("로그아웃 성공 시 예외가 발생하지 않는다.")
     void logout_success() {
