@@ -12,7 +12,6 @@ import com.example.community.user.repository.UserCredentialRepository;
 import com.example.community.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Before;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +25,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,7 +45,6 @@ public class CommentIntegrationTest {
     @Autowired
     UserCredentialRepository userCredentialRepository;
 
-    Comment comment;
     User postAuthor;
     User commenter;
     User otherUser;
@@ -100,7 +97,7 @@ public class CommentIntegrationTest {
     @Test
     @DisplayName("댓글 수정 요청 - 변경 확인")
     void modifyComment_success() throws Exception{
-        Comment comment = saveCommentByCommenter("test comment");
+        Comment comment = saveCommentByCommenter();
         String accessToken = loginAndGetAccessToken();
         mockMvc.perform(patch("/api/posts/"+post.getPostId()+"/comments/"+comment.getCommentId())
                         .header("Authorization", "Bearer "+accessToken)
@@ -127,7 +124,7 @@ public class CommentIntegrationTest {
     @Test
     @DisplayName("댓글 조회 요청 확인")
     void getComments_success() throws Exception{
-        Comment comment = saveCommentByCommenter("test comment");
+        saveCommentByCommenter();
         String accessToken = loginAndGetAccessToken();
         mockMvc.perform(get("/api/posts/"+post.getPostId()+"/comments")
                         .header("Authorization", "Bearer "+accessToken))
@@ -148,7 +145,7 @@ public class CommentIntegrationTest {
     @Test
     @DisplayName("댓글 삭제 요청 확인")
     void deleteComments_success() throws Exception{
-        Comment comment = saveCommentByCommenter("test comment");
+        Comment comment = saveCommentByCommenter();
         String accessToken = loginAndGetAccessToken();
         mockMvc.perform(delete("/api/posts/"+post.getPostId()+"/comments/"+comment.getCommentId())
                         .header("Authorization", "Bearer "+accessToken))
@@ -178,9 +175,9 @@ public class CommentIntegrationTest {
 
         return json.get("data").get("token").get("accessToken").asText();
     }
-    private Comment saveCommentByCommenter(String commentBody) {
+    private Comment saveCommentByCommenter() {
         Comment savedComment = commentRepository.save(
-                new Comment(commenter, post, null, commentBody)
+                new Comment(commenter, post, null, "test comment")
         );
 
         Post savedPost = postRepository.findById(post.getPostId()).orElseThrow();
