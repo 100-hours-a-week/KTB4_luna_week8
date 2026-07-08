@@ -11,8 +11,6 @@ import com.example.community.global.config.filter.JwtFilter;
 import com.example.community.global.dto.AuthorDTO;
 import com.example.community.global.exceptions.ContentNotFoundException;
 import com.example.community.global.exceptions.ForbiddenException;
-import com.example.community.global.exceptions.InvalidInputException;
-import com.example.community.user.dto.ModifyPasswordRequestDTO;
 import com.example.community.user.entity.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -87,6 +85,7 @@ public class CommentControllerTest {
                 .andExpect(jsonPath("$.data.comment.commentBody").value("test comment"))
                 .andExpect(jsonPath("$.data.comment.modified").value(false))
                 .andExpect(jsonPath("$.data.comment.deleted").value(false));
+        verify(commentService).uploadComment(eq(1L), eq(1L), argThat(request -> request.getCommentBody().equals("test comment")));
     }
     @Test
     @DisplayName("빈 댓글은 400")
@@ -203,8 +202,7 @@ public class CommentControllerTest {
                 .andExpect(jsonPath("$.data.comment.commentBody").value("modified comment"))
                 .andExpect(jsonPath("$.data.comment.modified").value(true));
 
-        verify(commentService).modifyComment(eq(1L), eq(1L), eq(1L), argThat(request -> request.getCommentBody().equals("modified comment"))
-        );
+        verify(commentService).modifyComment(eq(1L), eq(1L), eq(1L), argThat(request -> request.getCommentBody().equals("modified comment")));
     }
 
     @Test
@@ -245,6 +243,7 @@ public class CommentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("comment_delete_success"))
                 .andExpect(jsonPath("$.data.deleted").value(true));
+        verify(commentService).deleteComment(1L, 1L, 1L);
     }
 
     @Test

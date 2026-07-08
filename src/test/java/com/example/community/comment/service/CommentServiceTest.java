@@ -8,7 +8,10 @@ import com.example.community.comment.factory.CommentFactory;
 import com.example.community.comment.repository.CommentRepository;
 import com.example.community.global.auth.AuthValidator;
 import com.example.community.global.auth.JwtToken;
+import com.example.community.global.dto.AuthorDTO;
+import com.example.community.global.exceptions.ContentNotFoundException;
 import com.example.community.global.exceptions.ForbiddenException;
+import com.example.community.global.exceptions.NotRegisteredException;
 import com.example.community.global.mapper.AuthorMapper;
 import com.example.community.post.entity.Post;
 import com.example.community.post.repository.PostRepository;
@@ -88,6 +91,31 @@ public class CommentServiceTest {
         assertThat(response.getComment().getCommentBody()).isEqualTo("test comment");
         assertThat(post.getComments()).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("댓글 작성 시 작성자가 존재하지 않으면 401")
+    void uploadComment_authorNotFound_throwsNotRegisteredException() {
+        when(userRepository.findById(commenter.getUserId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> commentService.uploadComment(post.getPostId(), commenter.getUserId(), commentRequestDTO)).isInstanceOf(NotRegisteredException.class);
+
+        verify(postRepository, never()).findById(anyLong());
+        verify(commentFactory, never()).create(any(), any(), any(), any());
+        verify(commentRepository, never()).save(any(Comment.class));
+    }
+
+    @Test
+    @DisplayName("댓글 작성 시 게시글이 존재하지 않으면 404")
+    void uploadComment_postNotFound_throwsContentNotFoundException() {
+        when(userRepository.findById(commenter.getUserId())).thenReturn(Optional.of(commenter));
+        when(postRepository.findById(post.getPostId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> commentService.uploadComment(post.getPostId(), commenter.getUserId(), commentRequestDTO)).isInstanceOf(ContentNotFoundException.class);
+
+        verify(commentFactory, never()).create(any(), any(), any(), any());
+        verify(commentRepository, never()).save(any(Comment.class));
+    }
+
     @Test
     @DisplayName("댓글 작성 실패 시 post의 댓글 수가 오르지 않는다.")
     void upload_fail(){
@@ -104,12 +132,35 @@ public class CommentServiceTest {
     @Test
     @DisplayName("댓글 조회 성공")
     void getCommentList_success(){
-        when(postRepository.findById(anyLong())).thenReturn(Optional.of(post));
-        when(commentRepository.findListByPost(anyLong())).thenReturn(List.of());
+        when(postRepository.findById(post.getPostId())).thenReturn(Optional.of(post));
+        when(commentRepository.findListByPost(post.getPostId())).thenReturn(List.of(comment));
+        when(userRepository.findById(commenter.getUserId())).thenReturn(Optional.of(commenter));
+        when(authorMapper.toAuthorDTO(commenter)).thenReturn(new AuthorDTO(UserStatus.ACTIVE, "commenter", ""));
 
-        List<CommentResponseDTO> response = commentService.getComments(1L);
-        assertThat(response).isEqualTo(List.of());
+        List<CommentResponseDTO> response = commentService.getComments(post.getPostId());
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).getAuthor().getNickname()).isEqualTo("commenter");
+        assertThat(response.get(0).getComment().getCommentId()).isEqualTo(comment.getCommentId());
+        assertThat(response.get(0).getComment().getCommentBody()).isEqualTo("test comment");
+        assertThat(response.get(0).getComment().isModified()).isFalse();
+        assertThat(response.get(0).getComment().isDeleted()).isFalse();
+
+        verify(postRepository).findById(post.getPostId());
+        verify(commentRepository).findListByPost(post.getPostId());
+        verify(userRepository).findById(commenter.getUserId());
     }
+
+    @Test
+    @DisplayName("댓글 조회 시 게시글이 존재하지 않으면 404")
+    void getComments_postNotFound_throwsContentNotFoundException() {
+        when(postRepository.findById(post.getPostId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> commentService.getComments(post.getPostId())).isInstanceOf(ContentNotFoundException.class);
+
+        verify(commentRepository, never()).findListByPost(anyLong());
+    }
+
     @Test
     @DisplayName("댓글 수정 성공")
     void modifyComment_success(){
@@ -131,6 +182,43 @@ public class CommentServiceTest {
         assertThatThrownBy(()->commentService.modifyComment(1L, 1L, 1L, modifyRequestDTO)).isInstanceOf(ForbiddenException.class);
         assertThat(comment.isModified()).isFalse();
     }
+
+    @Test
+    @DisplayName("댓글 수정 시 게시글이 존재하지 않으면 404")
+    void modifyComment_postNotFound_throwsContentNotFoundException() {
+        when(postRepository.findById(post.getPostId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                commentService.modifyComment(
+                        post.getPostId(),
+                        comment.getCommentId(),
+                        commenter.getUserId(),
+                        modifyRequestDTO
+                )
+        ).isInstanceOf(ContentNotFoundException.class);
+
+        verify(commentRepository, never()).findCommentWithPost(anyLong(), anyLong());
+        verify(authValidator, never()).validateOwner(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("댓글 수정 시 댓글이 존재하지 않으면 404")
+    void modifyComment_commentNotFound_throwsContentNotFoundException() {
+        when(postRepository.findById(post.getPostId())).thenReturn(Optional.of(post));
+        when(commentRepository.findCommentWithPost(post.getPostId(), comment.getCommentId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                commentService.modifyComment(
+                        post.getPostId(),
+                        comment.getCommentId(),
+                        commenter.getUserId(),
+                        modifyRequestDTO
+                )
+        ).isInstanceOf(ContentNotFoundException.class);
+
+        verify(authValidator, never()).validateOwner(anyLong(), anyLong());
+    }
+
     @Test
     @DisplayName("댓글 삭제 성공")
     void deleteComment_success(){
@@ -148,5 +236,21 @@ public class CommentServiceTest {
 
         assertThatThrownBy(()->commentService.deleteComment(1L, 1L, 1L)).isInstanceOf(ForbiddenException.class);
         assertThat(comment.isDeleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("댓글 삭제 시 댓글이 존재하지 않으면 404")
+    void deleteComment_commentNotFound_throwsContentNotFoundException() {
+        when(commentRepository.findCommentWithPost(post.getPostId(), comment.getCommentId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                commentService.deleteComment(
+                        post.getPostId(),
+                        comment.getCommentId(),
+                        commenter.getUserId()
+                )
+        ).isInstanceOf(ContentNotFoundException.class);
+
+        verify(authValidator, never()).validateOwner(anyLong(), anyLong());
     }
 }
