@@ -24,14 +24,11 @@ public class JwtTokenProvider {
     public JwtTokenProvider(@Value("${jwt.secret}") String secretKey,
                             @Value("${jwt.access-token-expiration-ms}") long accessTokenExpirationMs,
                             @Value("${jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs){
-        try {
-            byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-            key = Keys.hmacShaKeyFor(keyBytes);
-            this.accessTokenExpirationMs = accessTokenExpirationMs;
-            this.refreshTokenExpirationMs = refreshTokenExpirationMs;
-        } catch (Exception e) {
-            throw new RuntimeException("Error initializing JwtTokenProvider", e);
-        }
+
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        key = Keys.hmacShaKeyFor(keyBytes);
+        this.accessTokenExpirationMs = accessTokenExpirationMs;
+        this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
 
     public JwtToken createJwtToken(User user){
