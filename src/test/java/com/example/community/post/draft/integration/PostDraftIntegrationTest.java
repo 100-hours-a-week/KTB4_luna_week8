@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -43,22 +44,25 @@ public class PostDraftIntegrationTest {
     UserRepository userRepository;
     @Autowired
     UserCredentialRepository userCredentialRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
 
     User user;
     User otherUser;
 
     @BeforeEach
     void setUp(){
-        userCredentialRepository.deleteAll();
         postDraftRepository.deleteAll();
         postRepository.deleteAll();
+        userCredentialRepository.deleteAll();
         userRepository.deleteAll();
 
         user = userRepository.save(new User("user", "", UserRole.ROLE_USER, UserStatus.ACTIVE));
         otherUser = userRepository.save(new User("other", "", UserRole.ROLE_USER, UserStatus.ACTIVE));
 
-        userCredentialRepository.save(new UserCredential(user, "user@test.com", "Test1234!"));
-        userCredentialRepository.save(new UserCredential(otherUser, "other@test.com", "Test1234!"));
+        userCredentialRepository.save(new UserCredential(user, "user@test.com", passwordEncoder.encode("Test1234!")));
+        userCredentialRepository.save(new UserCredential(otherUser, "other@test.com", passwordEncoder.encode("Test1234!")));
     }
 
     @Test

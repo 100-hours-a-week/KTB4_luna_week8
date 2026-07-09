@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -44,6 +45,8 @@ public class CommentIntegrationTest {
     UserRepository userRepository;
     @Autowired
     UserCredentialRepository userCredentialRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     User postAuthor;
     User commenter;
@@ -61,8 +64,8 @@ public class CommentIntegrationTest {
         commenter = userRepository.save(new User("commenter", "", UserRole.ROLE_USER, UserStatus.ACTIVE));
         otherUser = userRepository.save(new User("other", "", UserRole.ROLE_USER, UserStatus.ACTIVE));
 
-        userCredentialRepository.save(new UserCredential(commenter, "commenter@test.com", "Test1234!"));
-        userCredentialRepository.save(new UserCredential(otherUser, "other@test.com", "Test1234!"));
+        userCredentialRepository.save(new UserCredential(commenter, "commenter@test.com", passwordEncoder.encode("Test1234!")));
+        userCredentialRepository.save(new UserCredential(otherUser, "other@test.com", passwordEncoder.encode("Test1234!")));
 
         post = postRepository.save(new Post(postAuthor, "testpost", "testpostbody", ""));
     }

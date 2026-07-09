@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +34,8 @@ public class UserIntegrationTest {
     UserRepository userRepository;
     @Autowired
     UserCredentialRepository userCredentialRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     User user;
     UserCredential credential;
@@ -45,7 +48,7 @@ public class UserIntegrationTest {
         user = new User("tester", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
         userRepository.save(user);
 
-        credential = new UserCredential(user, "test1@test.com", "Test1234!");
+        credential = new UserCredential(user, "test1@test.com", passwordEncoder.encode("Test1234!"));
         userCredentialRepository.save(credential);
     }
 
@@ -134,7 +137,7 @@ public class UserIntegrationTest {
 
         UserCredential updatedCredential = userCredentialRepository.findById(user.getUserId()).orElseThrow();
 
-        assertThat(updatedCredential.matchPassword("New12345!")).isTrue();
+        assertThat(passwordEncoder.matches("New12345!", updatedCredential.getPassword())).isTrue();
     }
 
     @Test

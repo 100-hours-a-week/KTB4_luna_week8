@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -58,6 +59,8 @@ class PostIntegrationTest {
     PostDraftRepository postDraftRepository;
     @Autowired
     TokenRepository tokenRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     User user;
     User otherUser;
@@ -81,9 +84,9 @@ class PostIntegrationTest {
         otherUser = userRepository.save(new User("other", "", UserRole.ROLE_USER, UserStatus.ACTIVE));
         admin = userRepository.save(new User("admin", "", UserRole.ROLE_ADMIN, UserStatus.ACTIVE));
 
-        userCredentialRepository.save(new UserCredential(user, "user@test.com", "Test1234!"));
-        userCredentialRepository.save(new UserCredential(otherUser, "other@test.com", "Test1234!"));
-        userCredentialRepository.save(new UserCredential(admin, "admin@test.com", "Test1234!"));
+        userCredentialRepository.save(new UserCredential(user, "user@test.com", passwordEncoder.encode("Test1234!")));
+        userCredentialRepository.save(new UserCredential(otherUser, "other@test.com", passwordEncoder.encode("Test1234!")));
+        userCredentialRepository.save(new UserCredential(admin, "admin@test.com", passwordEncoder.encode("Test1234!")));
     }
 
     @Test
