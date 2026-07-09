@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
@@ -41,6 +42,9 @@ public class UserServiceTest {
     @Mock
     UserCredentialFactory userCredentialFactory;
 
+    @Mock
+    PasswordEncoder passwordEncoder;
+
     @InjectMocks
     UserService userService;
 
@@ -56,7 +60,7 @@ public class UserServiceTest {
     @BeforeEach
     void setUp() {
         user = new User(1L, "tester", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
-        credential = new UserCredential(user, "test@test.com", "Test1234!");
+        credential = new UserCredential(user, "test@test.com", "encoded-password");
 
         jwtToken = new JwtToken("Bearer", "access-token", "refresh-token");
 
@@ -85,6 +89,7 @@ public class UserServiceTest {
     @DisplayName("로그인 한 유저에게 토큰이 발급 된다.")
     void login_returnsToken(){
         when(userCredentialRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(credential));
+        when(passwordEncoder.matches("Test1234!", "encoded-password")).thenReturn(true);
         when(jwtTokenProvider.createJwtToken(user)).thenReturn(jwtToken);
 
         LoginResponseDTO response = userService.login(loginRequest);
@@ -94,6 +99,7 @@ public class UserServiceTest {
         assertThat(response.getNickname()).isEqualTo("tester");
 
         verify(jwtTokenProvider).createJwtToken(user);
+        verify(passwordEncoder).matches("Test1234!", "encoded-password");
     }
     @Test
     @DisplayName("이메일이 등록되지 않으면 401")
@@ -107,6 +113,7 @@ public class UserServiceTest {
     void login_passwordInvalid_throwsPasswordInvalidException() {
         loginRequest.setPassword("Wrong1234!");
 
+        when(passwordEncoder.matches("Wrong1234!", "encoded-password")).thenReturn(false);
         when(userCredentialRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(credential));
 
         assertThatThrownBy(() -> userService.login(loginRequest)).isInstanceOf(PasswordInvalidException.class);
@@ -130,7 +137,7 @@ public class UserServiceTest {
     @DisplayName("회원가입 시 관련 정보가 등록된다.")
     void signUp_success_savesUserAndCredential() {
         User newUser = new User(2L, "newbie", "", UserRole.ROLE_USER, UserStatus.ACTIVE);
-        UserCredential newCredential = new UserCredential(newUser, "new@test.com", "Test1234!");
+        UserCredential newCredential = new UserCredential(newUser, "new@test.com", "encoded-password-2");
 
         when(userCredentialRepository.existsByEmail(signUpRequest.getEmail())).thenReturn(false);
         when(userRepository.existsByNickname(signUpRequest.getNickname())).thenReturn(false);
@@ -199,11 +206,15 @@ public class UserServiceTest {
     @DisplayName("비밀번호 변경 성공 시 정상 처리")
     void modifyPassword_success() {
         when(userCredentialRepository.findById(1L)).thenReturn(Optional.of(credential));
+        when(passwordEncoder.matches("New12345!", "encoded-password")).thenReturn(false);
+        when(passwordEncoder.encode("New12345!")).thenReturn("new-encoded-password");
 
         userService.modifyPassword(1L, 1L, modifyPasswordRequest);
 
-        assertThat(credential.matchPassword("New12345!")).isTrue();
+        assertThat(credential.getPassword()).isEqualTo("new-encoded-password");
         verify(authValidator).validateOwner(1L, 1L);
+        verify(passwordEncoder).matches("New12345!", "encoded-password");
+        verify(passwordEncoder).encode("New12345!");
     }
     @Test
     @DisplayName("기존 비밀번호와 같으면 400 에러")
@@ -212,11 +223,12 @@ public class UserServiceTest {
         modifyPasswordRequest.setPasswordConfirm("Test1234!");
 
         when(userCredentialRepository.findById(1L)).thenReturn(Optional.of(credential));
+        when(passwordEncoder.matches("Test1234!", "encoded-password")).thenReturn(true);
 
         assertThatThrownBy(() -> userService.modifyPassword(1L, 1L, modifyPasswordRequest)).isInstanceOf(InvalidInputException.class);
     }
     @Test
-    @DisplayName("다른 사람의 정보는 수정 하면 403")
+    @DisplayName("다른 사람의 비밀번호는 수정 하면 403")
     void modifyPassword_notOwner_throwsForbiddenException() {
         doThrow(new ForbiddenException()).when(authValidator).validateOwner(2L, 1L);
 
