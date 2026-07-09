@@ -10,6 +10,7 @@ import com.example.community.user.factory.UserFactory;
 import com.example.community.user.repository.UserCredentialRepository;
 import com.example.community.user.repository.UserRepository;
 import jakarta.validation.Valid;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -25,14 +26,16 @@ public class UserService {
     private final UserFactory userFactory;
     private final UserCredentialFactory userCredentialFactory;
     private final JwtTokenProvider jwtTokenProvider;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, UserCredentialRepository userCredentialRepository, AuthValidator authValidator, UserFactory userFactory, UserCredentialFactory userCredentialFactory, JwtTokenProvider jwtTokenProvider) {
+    public UserService(UserRepository userRepository, UserCredentialRepository userCredentialRepository, AuthValidator authValidator, UserFactory userFactory, UserCredentialFactory userCredentialFactory, JwtTokenProvider jwtTokenProvider, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userCredentialRepository = userCredentialRepository;
         this.authValidator = authValidator;
         this.userFactory = userFactory;
         this.userCredentialFactory = userCredentialFactory;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // ----------------------------------- 로그인, 토큰 생성 -----------------------------------
@@ -45,7 +48,7 @@ public class UserService {
         User user = credential.getUser();
 
         if (!user.isActive()) throw new NotRegisteredException();
-        if (!credential.matchPassword(password)) throw new PasswordInvalidException();
+        if (!passwordEncoder.matches(password, credential.getPassword())) throw new PasswordInvalidException();
 
         JwtToken token = jwtTokenProvider.createJwtToken(user);
 
@@ -89,9 +92,9 @@ public class UserService {
         authValidator.validateOwner(loginUserId, targetUserId);
 
         UserCredential credential = userCredentialRepository.findById(targetUserId).orElseThrow(NotRegisteredException::new);
-        if (credential.matchPassword(requestDTO.getPassword())) throw new InvalidInputException();
+        if (passwordEncoder.matches(requestDTO.getPassword(), credential.getPassword())) throw new InvalidInputException();
 
-        credential.modifyPassword(requestDTO.getPassword());
+        credential.modifyPassword(passwordEncoder.encode(requestDTO.getPassword()));
     }
     // ----------------------------------- 유저 탈퇴(유저 삭제) -----------------------------------
     @Transactional

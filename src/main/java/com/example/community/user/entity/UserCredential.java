@@ -26,7 +26,7 @@ public class UserCredential {
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     private String password;
 
     public UserCredential(User user, String email, String password) {
