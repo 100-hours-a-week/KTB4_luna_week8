@@ -102,7 +102,7 @@ public class PostDraftService {
                 postDraft.getTitle(),
                 postDraft.getPostBody(),
                 postDraft.getPostImageUrl(),
-                postDraft.getUpdatedAt(),
+                postDraft.getUpdatedAt() == null ? postDraft.getCreatedAt(): postDraft.getUpdatedAt() ,
                 postDraft.getVersion()
         );
     }
