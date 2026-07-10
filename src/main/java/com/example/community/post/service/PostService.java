@@ -73,7 +73,7 @@ public class PostService {
 
     // ----------------------------------- 게시물 상세 조회 -----------------------------------
     @Transactional
-    public PostDetailResponseDTO getPostDetail(UserRole loginUserRole, Long postId){
+    public PostDetailResponseDTO getPostDetail(Long userId, UserRole loginUserRole, Long postId){
         Post post = postRepository.findByPostId(postId).orElseThrow(ContentNotFoundException::new);
 
         // 삭제된 게시글은 접근 x
@@ -82,10 +82,11 @@ public class PostService {
         // 블라인드 된 게시글은 권한(관리자)이 있어야만 접근 가능.
         if(post.isBlinded() && !UserRole.ROLE_ADMIN.equals(loginUserRole)) throw new ForbiddenException();
 
+        boolean liked = postLikeRepository.existsByUserAndPost(userId, postId);
         AuthorDTO authorDTO = authorMapper.toAuthorDTO(post.getAuthor());
         post.increaseViews();
 
-        return new PostDetailResponseDTO(authorDTO, new PostDTO(post), toMetaDTO(post));
+        return new PostDetailResponseDTO(authorDTO, new PostDTO(post), toMetaDTO(post, liked));
     }
 
     // ----------------------------------- 게시물 수정 -----------------------------------
@@ -97,9 +98,10 @@ public class PostService {
         authValidator.validateOwner(userId, post.getAuthor().getUserId());
         PostRevision postRevision = new PostRevision(post);
         postRevisionRepository.save(postRevision);
+        boolean liked = postLikeRepository.existsByUserAndPost(userId, postId);
 
         post.modifyPost(postRequestDTO.getTitle(), postRequestDTO.getPostBody(), postRequestDTO.getPostImageUrl());
-        return new PostDetailResponseDTO(authorMapper.toAuthorDTO(post.getAuthor()), new PostDTO(post), toMetaDTO(post));
+        return new PostDetailResponseDTO(authorMapper.toAuthorDTO(post.getAuthor()), new PostDTO(post), toMetaDTO(post, liked));
     }
 
     // ----------------------------------- 게시물 삭제 -----------------------------------
@@ -169,7 +171,7 @@ public class PostService {
         return new PostListResponseDTO(authorMapper.toAuthorDTO(post.getAuthor()), new PostItemDTO(post));
     }
 
-    private MetaDTO toMetaDTO(Post post){
-        return new MetaDTO(post.getLikes(), post.getViews(), post.getComments(), false);
+    private MetaDTO toMetaDTO(Post post, boolean liked){
+        return new MetaDTO(post.getLikes(), post.getViews(), post.getComments(), liked);
     }
 }

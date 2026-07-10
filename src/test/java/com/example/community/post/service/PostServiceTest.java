@@ -139,7 +139,7 @@ class PostServiceTest {
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
         when(authorMapper.toAuthorDTO(user)).thenReturn(authorDTO);
 
-        PostDetailResponseDTO response = postService.getPostDetail(UserRole.ROLE_USER, 1L);
+        PostDetailResponseDTO response = postService.getPostDetail(1L, UserRole.ROLE_USER, 1L);
 
         assertThat(response.getAuthor().getNickname()).isEqualTo("tester");
         assertThat(response.getPost().getTitle()).isEqualTo("title");
@@ -152,7 +152,7 @@ class PostServiceTest {
     void getPostDetail_notFoundThrowsException() {
         when(postRepository.findByPostId(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L)).isInstanceOf(ContentNotFoundException.class);
+        assertThatThrownBy(() -> postService.getPostDetail(1L, UserRole.ROLE_USER, 1L)).isInstanceOf(ContentNotFoundException.class);
     }
 
     @Test
@@ -161,7 +161,7 @@ class PostServiceTest {
         post.deletePost();
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L)).isInstanceOf(ContentNotFoundException.class);
+        assertThatThrownBy(() -> postService.getPostDetail(1L, UserRole.ROLE_USER, 1L)).isInstanceOf(ContentNotFoundException.class);
     }
 
     @Test
@@ -170,7 +170,7 @@ class PostServiceTest {
         post.blindPost();
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.getPostDetail(UserRole.ROLE_USER, 1L)).isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> postService.getPostDetail(1L, UserRole.ROLE_USER, 1L)).isInstanceOf(ForbiddenException.class);
     }
 
     @Test
@@ -180,7 +180,7 @@ class PostServiceTest {
         when(postRepository.findByPostId(1L)).thenReturn(Optional.of(post));
         when(authorMapper.toAuthorDTO(user)).thenReturn(authorDTO);
 
-        PostDetailResponseDTO response = postService.getPostDetail(UserRole.ROLE_ADMIN, 1L);
+        PostDetailResponseDTO response = postService.getPostDetail(1L, UserRole.ROLE_ADMIN, 1L);
 
         assertThat(response.getPost().getPostId()).isEqualTo(1L);
         assertThat(response.getPost().getTitle()).isEqualTo("title");

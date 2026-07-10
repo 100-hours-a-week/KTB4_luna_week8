@@ -33,8 +33,9 @@ public class PostController {
     }
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDetailResponseDTO>> getPostDetail(Authentication authentication, @PathVariable("postId") Long postId){
+        Long userId = getLoginUserId(authentication);
         UserRole role = getLoginUserRole(authentication);
-        PostDetailResponseDTO responseDTO= postService.getPostDetail(role, postId);
+        PostDetailResponseDTO responseDTO= postService.getPostDetail(userId, role, postId);
         return ResponseEntity.status(HttpStatus.OK).body(new ApiResponse<>("post_loading_success", responseDTO));
     }
     @PatchMapping("/{postId}")

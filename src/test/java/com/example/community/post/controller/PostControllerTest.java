@@ -168,7 +168,7 @@ class PostControllerTest {
     @Test
     @DisplayName("게시글 상세 조회 성공 시 200")
     void getPostDetail_success_returns200() throws Exception {
-        when(postService.getPostDetail(UserRole.ROLE_USER, 1L)).thenReturn(postDetailResponseDTO);
+        when(postService.getPostDetail(1L, UserRole.ROLE_USER, 1L)).thenReturn(postDetailResponseDTO);
 
         mockMvc.perform(get("/api/posts/1")
                         .with(authentication(userAuthentication)))
@@ -178,26 +178,26 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.post.postId").value(1L))
                 .andExpect(jsonPath("$.data.post.title").value("title"));
 
-        verify(postService).getPostDetail(UserRole.ROLE_USER, 1L);
+        verify(postService).getPostDetail(1L, UserRole.ROLE_USER, 1L);
     }
 
     @Test
     @DisplayName("관리자는 게시글 상세 조회 시 ROLE_ADMIN으로 service를 호출한다")
     void getPostDetail_admin_callsServiceWithAdminRole() throws Exception {
-        when(postService.getPostDetail(UserRole.ROLE_ADMIN, 1L)).thenReturn(postDetailResponseDTO);
+        when(postService.getPostDetail(99L, UserRole.ROLE_ADMIN, 1L)).thenReturn(postDetailResponseDTO);
 
         mockMvc.perform(get("/api/posts/1")
                         .with(authentication(adminAuthentication)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("post_loading_success"));
 
-        verify(postService).getPostDetail(UserRole.ROLE_ADMIN, 1L);
+        verify(postService).getPostDetail(99L, UserRole.ROLE_ADMIN, 1L);
     }
 
     @Test
     @DisplayName("게시글 상세 조회 권한이 없으면 403")
     void getPostDetail_forbidden_returns403() throws Exception {
-        when(postService.getPostDetail(UserRole.ROLE_USER, 1L)).thenThrow(new ForbiddenException());
+        when(postService.getPostDetail(1L, UserRole.ROLE_USER, 1L)).thenThrow(new ForbiddenException());
 
         mockMvc.perform(get("/api/posts/1")
                         .with(authentication(userAuthentication)))
@@ -208,7 +208,7 @@ class PostControllerTest {
     @Test
     @DisplayName("게시글 상세 조회 시 게시글이 없으면 404")
     void getPostDetail_notFound_returns404() throws Exception {
-        when(postService.getPostDetail(UserRole.ROLE_USER, 1L)).thenThrow(new ContentNotFoundException());
+        when(postService.getPostDetail(1L, UserRole.ROLE_USER, 1L)).thenThrow(new ContentNotFoundException());
 
         mockMvc.perform(get("/api/posts/1")
                         .with(authentication(userAuthentication)))
