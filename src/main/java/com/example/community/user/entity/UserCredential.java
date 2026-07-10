@@ -34,10 +34,6 @@ public class UserCredential {
         this.email = email;
         this.password = password;
     }
-    public boolean matchPassword(String password) {
-        return this.password.equals(password);
-    }
-
     public void modifyPassword(String password) {
         this.password = password;
     }
